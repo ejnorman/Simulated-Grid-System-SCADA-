@@ -1,0 +1,109 @@
+version: '3.8'
+
+services:
+  # Simulation Service - Power Grid Simulator
+  simulation:
+    build:
+      context: ./simulation
+      dockerfile: Dockerfile
+    container_name: ems-simulation
+    ports:
+      - "8001:8000"
+    environment:
+      - SIMULATION_PORT=8000
+      - UPDATE_INTERVAL=2
+      - IEEE_BUS_COUNT=14
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./simulation:/app
+    networks:
+      - ems-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Backend Service - Control and Data Management
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ems-backend
+    ports:
+      - "8002:8000"
+    environment:
+      - BACKEND_PORT=8000
+      - SIMULATION_URL=http://simulation:8000
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-my-super-secret-auth-token}
+      - INFLUXDB_ORG=${INFLUXDB_ORG:-capstone}
+      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-telemetry}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - simulation
+      - influxdb
+    networks:
+      - ems-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Frontend Service - React Dashboard
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ems-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8002
+      - REACT_APP_UPDATE_INTERVAL=2000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+    networks:
+      - ems-network
+    stdin_open: true
+    tty: true
+
+  # InfluxDB - Time-Series Database
+  influxdb:
+    image: influxdb:2.7
+    container_name: ems-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USER:-admin}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-changeme123}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-capstone}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-telemetry}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-my-super-secret-auth-token}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - ./database/influxdb:/docker-entrypoint-initdb.d
+    networks:
+      - ems-network
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  ems-network:
+    driver: bridge
+
+volumes:
+  influxdb-data:
