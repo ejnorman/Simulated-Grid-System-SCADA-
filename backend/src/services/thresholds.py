@@ -38,4 +38,22 @@ def check_thresholds(data: dict):
     Check: frequency_hz, each bus voltage_pu, each line loading_percent,
     each generator output_mw vs capacity_mw.
     """
-    raise NotImplementedError
+    # Temporary: Just check frequency as an example
+    freq = data.get("frequency_hz", 60.0)
+    
+    if freq < 59.80 or freq > 60.20:
+        create_alarm(
+            "freq_out_of_range",
+            "critical",
+            f"Frequency critical: {freq:.2f} Hz",
+            "frequency_hz",
+            freq,
+            59.80 if freq < 60.0 else 60.20
+        )
+    elif 59.95 <= freq <= 60.05:
+        clear_alarm("freq_out_of_range")
+    
+    # TODO (Role 2): Add voltage, line loading, generator checks
+    # See docs/reference/backend/src/services/thresholds.py for full example
+    
+    handle_critical_alarms()

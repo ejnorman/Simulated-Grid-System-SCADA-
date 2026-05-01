@@ -40,3 +40,12 @@ async def ingest_telemetry():
 
     last_telemetry = data
     print(f"[{data['timestamp']}] freq={data['frequency_hz']:.3f} Hz  ingested")
+
+    # TODO (Role 2): Write metrics to InfluxDB
+    # from ..db import influx
+    # influx.write_point("frequency", {}, {"value": data["frequency_hz"]}, data["timestamp"])
+    # ... (write other metrics)
+    
+    # TODO (Role 2): Check thresholds after ingestion
+    # from . import thresholds
+    # thresholds.check_thresholds(data)
