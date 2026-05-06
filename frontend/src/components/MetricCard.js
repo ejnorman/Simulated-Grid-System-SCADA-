@@ -6,27 +6,22 @@
  *   @param {number|null} value - Current telemetry value, or null if data is missing
  *   @param {string} unit - Measurement unit (e.g., "Hz", "MW", "kV", "PSI")
  *   @param {boolean} inAlarm - If true, applies alarm styling and shows alarm icon
- *   @param {string} severity - Required when inAlarm=true. Options: "warning" | "critical"
+ *   @param {string} severity - Required when inAlarm=true. Options: "advisory" | "warning" | "critical"
  *
  * Visual Behavior:
  *   - Normal state: White background, no icon, shows value + unit
- *   - Warning alarm: Light yellow background, ⚠️ icon
- *   - Critical alarm: Light red background, 🔴 icon
+ *   - Advisory alarm: Light blue background, info icon
+ *   - Warning alarm: Light yellow background, warning icon
+ *   - Critical alarm: Light red background, error icon
  *   - Missing data: Shows "—" instead of value (alarm styling still applies if inAlarm=true)
  *   - Smooth transition (0.2s ease) when alarm state changes
  *
- * Usage Examples:
- *   <MetricCard label="Frequency" value={49.8} unit="Hz" />
- *   <MetricCard label="City B Load" value={0} unit="MW" inAlarm={true} severity="critical" />
- *   <MetricCard label="Bus Voltage" value={135.2} unit="kV" inAlarm={true} severity="warning" />
- *   <MetricCard label="Missing Sensor" value={null} unit="MW" />
- *
  * Dependencies:
  *   - @mui/material (Paper, Typography)
+ *   - @mui/icons-material (ErrorOutlineIcon, WarningAmberIcon, InfoOutlinedIcon)
  *
  * Parent Components:
  *   - MetricsPanel (primary) - passes telemetry data
- *   - Can also be used standalone for testing
  *
  * Related Components:
  *   - AlarmsPanel - Lists active alarms with more detail
@@ -34,6 +29,9 @@
  */
 
 import { Paper, Typography } from "@mui/material";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 export default function MetricCard({
   label,
@@ -42,16 +40,34 @@ export default function MetricCard({
   inAlarm = false,
   severity = "critical",
 }) {
+  // Alarm styling based on severity
   const alarmStyles = inAlarm
     ? {
-        critical: { bgcolor: "#ffebee", borderColor: "#f44336" },
-        warning: { bgcolor: "#fffde7", borderColor: "#ff9800" },
+        advisory: { bgcolor: "#e3f2fd", borderColor: "#3b82f6" }, // Light blue
+        warning: { bgcolor: "#fffde7", borderColor: "#ff9800" }, // Light yellow
+        critical: { bgcolor: "#ffebee", borderColor: "#f44336" }, // Light red
       }[severity]
     : {};
 
+  // Alarm icon based on severity
   const AlarmIcon = inAlarm ? (
-    <span aria-label={`${severity} alarm`} style={{ marginRight: 4 }}>
-      {severity === "critical" ? "🔴" : "⚠️"}
+    <span
+      aria-label={`${severity} alarm`}
+      style={{
+        marginRight: 4,
+        display: "inline-flex",
+        verticalAlign: "middle",
+      }}
+    >
+      {severity === "critical" && (
+        <ErrorOutlineIcon fontSize="small" color="error" />
+      )}
+      {severity === "warning" && (
+        <WarningAmberIcon fontSize="small" color="warning" />
+      )}
+      {severity === "advisory" && (
+        <InfoOutlinedIcon fontSize="small" color="info" />
+      )}
     </span>
   ) : null;
 
@@ -68,7 +84,11 @@ export default function MetricCard({
       <Typography variant="caption" color="text.secondary" display="block">
         {label}
       </Typography>
-      <Typography variant="h5" fontWeight="bold">
+      <Typography
+        variant="h5"
+        fontWeight="bold"
+        sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+      >
         {AlarmIcon}
         {value ?? "—"}{" "}
         <Typography component="span" variant="body2">
