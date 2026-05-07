@@ -19,13 +19,6 @@
  * Dependencies:
  *   - @mui/material (Paper, Typography)
  *   - @mui/icons-material (ErrorOutlineIcon, WarningAmberIcon, InfoOutlinedIcon)
- *
- * Parent Components:
- *   - MetricsPanel (primary) - passes telemetry data
- *
- * Related Components:
- *   - AlarmsPanel - Lists active alarms with more detail
- *   - StatusChip - Shows categorical status (normal/advisory/warning/critical)
  */
 
 import { Paper, Typography } from "@mui/material";
@@ -43,32 +36,40 @@ export default function MetricCard({
   // Alarm styling based on severity
   const alarmStyles = inAlarm
     ? {
-        advisory: { bgcolor: "#e3f2fd", borderColor: "#3b82f6" }, // Light blue
-        warning: { bgcolor: "#fffde7", borderColor: "#ff9800" }, // Light yellow
-        critical: { bgcolor: "#ffebee", borderColor: "#f44336" }, // Light red
+        advisory: { bgcolor: "#e3f2fd", borderColor: "#3b82f6" },
+        warning: { bgcolor: "#fffde7", borderColor: "#ff9800" },
+        critical: { bgcolor: "#ffebee", borderColor: "#f44336" },
       }[severity]
     : {};
 
   // Alarm icon based on severity
   const AlarmIcon = inAlarm ? (
-    <span
-      aria-label={`${severity} alarm`}
-      style={{
-        marginRight: 4,
-        display: "inline-flex",
-        verticalAlign: "middle",
-      }}
-    >
+    <>
       {severity === "critical" && (
-        <ErrorOutlineIcon fontSize="small" color="error" />
+        <ErrorOutlineIcon
+          fontSize="small"
+          color="error"
+          sx={{ mr: 0.5, verticalAlign: "middle" }}
+          aria-label="critical alarm"
+        />
       )}
       {severity === "warning" && (
-        <WarningAmberIcon fontSize="small" color="warning" />
+        <WarningAmberIcon
+          fontSize="small"
+          color="warning"
+          sx={{ mr: 0.5, verticalAlign: "middle" }}
+          aria-label="warning alarm"
+        />
       )}
       {severity === "advisory" && (
-        <InfoOutlinedIcon fontSize="small" color="info" />
+        <InfoOutlinedIcon
+          fontSize="small"
+          color="info"
+          sx={{ mr: 0.5, verticalAlign: "middle" }}
+          aria-label="advisory alarm"
+        />
       )}
-    </span>
+    </>
   ) : null;
 
   return (
