@@ -42,7 +42,7 @@ def create_alarm(
         "metric": metric,
         "value": value,
         "threshold": threshold,
-        "created_at": _now(),
+        "timestamp": _now(),
         "cleared_at": None,
         "acknowledged": False,
         "acknowledged_by": None,
