@@ -9,10 +9,10 @@
  *   @param {string} severity - Required when inAlarm=true. Options: "advisory" | "warning" | "critical"
  *
  * Visual Behavior:
- *   - Normal state: White background, no icon, shows value + unit
- *   - Advisory alarm: Light blue background, info icon
- *   - Warning alarm: Light yellow background, warning icon
- *   - Critical alarm: Light red background, error icon
+ *   - Normal state: Dark background (#1a1a1a), no icon, shows value + unit
+ *   - Advisory alarm: Dark background with light blue border and info icon
+ *   - Warning alarm: Dark background with light yellow border and warning icon
+ *   - Critical alarm: Dark background with light red border and error icon
  *   - Missing data: Shows "—" instead of value (alarm styling still applies if inAlarm=true)
  *   - Smooth transition (0.2s ease) when alarm state changes
  *
@@ -33,14 +33,31 @@ export default function MetricCard({
   inAlarm = false,
   severity = "critical",
 }) {
+  // Base dark theme styling for the card
+  const baseStyle = {
+    bgcolor: "#1a1a1a",
+    p: 2,
+    textAlign: "center",
+    transition: "all 0.2s ease",
+  };
+
   // Alarm styling based on severity
   const alarmStyles = inAlarm
     ? {
-        advisory: { bgcolor: "#e3f2fd", borderColor: "#3b82f6" },
-        warning: { bgcolor: "#fffde7", borderColor: "#ff9800" },
-        critical: { bgcolor: "#ffebee", borderColor: "#f44336" },
+        advisory: {
+          border: "1px solid #3b82f6",
+          borderLeft: `4px solid #3b82f6`,
+        },
+        warning: {
+          border: "1px solid #ff9800",
+          borderLeft: `4px solid #ff9800`,
+        },
+        critical: {
+          border: "1px solid #f44336",
+          borderLeft: `4px solid #f44336`,
+        },
       }[severity]
-    : {};
+    : { border: "1px solid #333", borderLeft: `4px solid #2e7d32` };
 
   // Alarm icon based on severity
   const AlarmIcon = inAlarm ? (
@@ -76,10 +93,8 @@ export default function MetricCard({
     <Paper
       variant="outlined"
       sx={{
-        p: 2,
-        textAlign: "center",
+        ...baseStyle,
         ...alarmStyles,
-        transition: "background-color 0.2s ease",
       }}
     >
       <Typography variant="caption" color="text.secondary" display="block">
@@ -88,11 +103,16 @@ export default function MetricCard({
       <Typography
         variant="h5"
         fontWeight="bold"
-        sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "white",
+        }}
       >
         {AlarmIcon}
-        {value ?? "—"}{" "}
-        <Typography component="span" variant="body2">
+        <span style={{ color: "white" }}>{value ?? "—"}</span>{" "}
+        <Typography component="span" variant="body2" color="text.secondary">
           {unit}
         </Typography>
       </Typography>
