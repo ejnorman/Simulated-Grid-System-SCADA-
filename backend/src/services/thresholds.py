@@ -73,7 +73,7 @@ def check_thresholds(data: dict):
             )
 
         # Clears the frequency alarm once frequency returns to the normal band
-        elif freq_normal_low <= freq <= freq_normal_high:
+        else:
             clear_alarm("freq_out_of_range")
 
     # Loops through every bus in the sim data and checks its voltage
