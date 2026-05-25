@@ -25,4 +25,7 @@ export const sendControlCommand = (command) =>
 export const fetchMetricHistory = (metric, start, end, interval = null) =>
   api.get('/metrics/history', { params: { metric, start, end, interval } });
 
+export const sendDisturbance = (disturbance) =>
+  api.post('/disturbance', disturbance);
+
 export default api;

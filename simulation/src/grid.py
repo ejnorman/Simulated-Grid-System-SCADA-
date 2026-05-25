@@ -7,6 +7,7 @@ The three functions below define the API contract. Keep their signatures unchang
 """
 
 import logging
+import math
 import random
 from datetime import datetime, timezone
 
@@ -58,12 +59,27 @@ def create_network():
         net.load.loc[mask, "p_mw"] = lc["base_demand_mw"]
         net.load.loc[mask, "q_mvar"] = lc["base_demand_mvar"]
 
+    # Set thermal ratings from LINE_CONFIG so loading_percent is meaningful.
+    # case14() defaults leave max_i_ka as NaN on most lines, making loading_percent
+    # always 0 regardless of actual power flow. We derive max_i_ka from rated_mw
+    # using the bus voltage at the sending end: I = P / (sqrt(3) * V).
+    for lc in LINE_CONFIG:
+        fb, tb = lc["from_bus"] - 1, lc["to_bus"] - 1
+        line_mask = (net.line["from_bus"] == fb) & (net.line["to_bus"] == tb)
+        if line_mask.any():
+            vn_kv = float(net.bus.at[fb, "vn_kv"])
+            net.line.loc[line_mask, "max_i_ka"] = lc["rated_mw"] / (math.sqrt(3) * vn_kv)
+        else:
+            trafo_mask = (net.trafo["hv_bus"] == fb) & (net.trafo["lv_bus"] == tb)
+            if trafo_mask.any():
+                net.trafo.loc[trafo_mask, "sn_mva"] = lc["rated_mw"]
+
     return net
 
 
 net = create_network()
 _frequency_hz = 60.0
-_GOVERNOR_RATE = 0.1  # fraction of frequency deviation recovered per telemetry poll (~2 s)
+_GOVERNOR_RATE = 0.015  # fraction recovered per poll — slow enough (~2 min) for operators to respond
 _last_res = None      # dict of copied result DataFrames from last successful runpp
 
 grid_state = {
@@ -109,13 +125,38 @@ def _set_line_in_service(line_id: int, in_service: bool):
     grid_state["lines"][line_id]["in_service"] = in_service
 
 
+def _run_power_flow() -> dict | None:
+    """
+    Attempt Newton-Raphson power flow with fallback initialization.
+    'auto' reuses the previous solution — fast but fails after topology changes.
+    'flat' starts from 1.0 pu everywhere — robust after line trips.
+    Tolerance is relaxed to 1e-3 MVA (adequate for a monitoring dashboard).
+    Returns a dict of result DataFrames on success, None on total failure.
+    """
+    for init in ("auto", "dc", "flat"):
+        try:
+            pp.runpp(net, verbose=False, init=init,
+                     max_iteration=50, tolerance_mva=1e-3, numba=False)
+            return {
+                "bus":      net.res_bus.copy(),
+                "line":     net.res_line.copy(),
+                "trafo":    net.res_trafo.copy(),
+                "gen":      net.res_gen.copy(),
+                "ext_grid": net.res_ext_grid.copy(),
+            }
+        except Exception as e:
+            logger.debug("Power flow failed (init=%s): %s", init, e)
+    logger.warning("Power flow failed to converge")
+    return None
+
+
 def _swing_eq(p_imbalance_mw: float) -> float:
     """
     Estimate frequency deviation from a generation/load imbalance.
     Δf = P_imbalance / (2 × H × S_base), H=4s, S_base=100 MVA.
     Positive imbalance (more generation) → frequency rises.
     """
-    return p_imbalance_mw / 800.0
+    return p_imbalance_mw / 200.0
 
 
 # =============================================================================
@@ -140,19 +181,11 @@ def build_telemetry() -> dict:
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    try:
-        pp.runpp(net, verbose=False)
-        _last_res = {
-            "bus":      net.res_bus.copy(),
-            "line":     net.res_line.copy(),
-            "trafo":    net.res_trafo.copy(),
-            "gen":      net.res_gen.copy(),
-            "ext_grid": net.res_ext_grid.copy(),
-        }
-    except Exception as e:
-        logger.warning("Power flow failed to converge: %s", e)
+    result = _run_power_flow()
+    if result is not None:
+        _last_res = result
 
-    freq = _jitter(_frequency_hz)
+    freq = _jitter(_frequency_hz, pct=0.0002)  # ±0.012 Hz — frequency is grid-wide, not sensor-noisy
 
     # --- Buses ---
     buses = []

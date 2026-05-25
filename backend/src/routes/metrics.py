@@ -40,6 +40,26 @@ def get_metrics_current():
         "system_status":       status,
         "critical_buses":      critical_buses,
         "overloaded_lines":    overloaded_lines,
+        "lines": [
+            {
+                "id":               l["id"],
+                "from_bus":         l["from_bus"],
+                "to_bus":           l["to_bus"],
+                "in_service":       l["in_service"],
+                "loading_percent":  round(l["loading_percent"], 1),
+            }
+            for l in data.get("lines", [])
+        ],
+        "generators": [
+            {
+                "id":          g["id"],
+                "bus":         g["bus"],
+                "in_service":  g["in_service"],
+                "output_mw":   round(g["output_mw"], 1),
+                "capacity_mw": g["capacity_mw"],
+            }
+            for g in data.get("generators", [])
+        ],
     }
 
 
