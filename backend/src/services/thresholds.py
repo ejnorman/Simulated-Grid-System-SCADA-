@@ -56,24 +56,24 @@ def check_thresholds(data: dict):
     freq = data.get("frequency_hz")
     if freq is not None:
         t = THRESHOLDS["frequency"]
-        adv_low, adv_high  = t["advisory"]
-        warn_low, warn_high = t["warning"]
+        freq_advisory_low, freq_advisory_high = t["advisory"]
+        freq_warning_low, freq_warning_high   = t["warning"]
 
-        if freq < warn_low or freq > warn_high:
+        if freq < freq_warning_low or freq > freq_warning_high:
             create_alarm(
                 "freq_out_of_range", "critical",
                 f"Frequency critical: {freq:.2f} Hz",
                 "frequency_hz", freq,
-                warn_low if freq < 60.0 else warn_high,
+                freq_warning_low if freq < 60.0 else freq_warning_high,
             )
-        elif freq < adv_low or freq > adv_high:
+        elif freq < freq_advisory_low or freq > freq_advisory_high:
             create_alarm(
                 "freq_out_of_range", "warning",
                 f"Frequency warning: {freq:.2f} Hz",
                 "frequency_hz", freq,
-                adv_low if freq < 60.0 else adv_high,
+                freq_advisory_low if freq < 60.0 else freq_advisory_high,
             )
-        elif adv_low + _FREQ_CLEAR_MARGIN <= freq <= adv_high - _FREQ_CLEAR_MARGIN:
+        elif freq_advisory_low + _FREQ_CLEAR_MARGIN <= freq <= freq_advisory_high - _FREQ_CLEAR_MARGIN:
             # Only clear when freq is clearly inside the advisory band (59.93–60.07)
             clear_alarm("freq_out_of_range")
         # else: in the 59.90–59.93 or 60.07–60.10 deadband — leave alarm state unchanged
@@ -87,25 +87,25 @@ def check_thresholds(data: dict):
             continue  # AVR-controlled — operator cannot adjust
 
         t = THRESHOLDS["voltage_pu"]
-        norm_low, norm_high = t["normal"]
-        warn_low, warn_high = t["warning"]
+        voltage_normal_low, voltage_normal_high   = t["normal"]
+        voltage_warning_low, voltage_warning_high = t["warning"]
         alarm_id = f"voltage_bus_{bus_id}"
 
-        if voltage < warn_low or voltage > warn_high:
+        if voltage < voltage_warning_low or voltage > voltage_warning_high:
             create_alarm(
                 alarm_id, "critical",
                 f"Bus {bus_id} voltage critical: {voltage:.3f} pu",
                 "voltage_pu", voltage,
-                warn_low if voltage < 1.0 else warn_high,
+                voltage_warning_low if voltage < 1.0 else voltage_warning_high,
             )
-        elif voltage < norm_low or voltage > norm_high:
+        elif voltage < voltage_normal_low or voltage > voltage_normal_high:
             create_alarm(
                 alarm_id, "warning",
                 f"Bus {bus_id} voltage warning: {voltage:.3f} pu",
                 "voltage_pu", voltage,
-                norm_low if voltage < 1.0 else norm_high,
+                voltage_normal_low if voltage < 1.0 else voltage_normal_high,
             )
-        elif norm_low + _VOLT_CLEAR_MARGIN <= voltage <= norm_high - _VOLT_CLEAR_MARGIN:
+        elif voltage_normal_low + _VOLT_CLEAR_MARGIN <= voltage <= voltage_normal_high - _VOLT_CLEAR_MARGIN:
             clear_alarm(alarm_id)
         # else: in deadband — leave unchanged
 
@@ -120,24 +120,23 @@ def check_thresholds(data: dict):
         if loading is None or line_id is None:
             continue
 
-        t = THRESHOLDS["line_loading_pct"]
-        norm_thresh = t["normal"]
-        warn_thresh = t["warning"]
+        loading_normal  = THRESHOLDS["line_loading_pct"]["normal"]
+        loading_warning = THRESHOLDS["line_loading_pct"]["warning"]
         alarm_id = f"loading_line_{line_id}"
 
-        if loading > warn_thresh:
+        if loading > loading_warning:
             create_alarm(
                 alarm_id, "critical",
                 f"Line {line_id} overload critical: {loading:.1f}%",
-                "line_loading_pct", loading, warn_thresh,
+                "line_loading_pct", loading, loading_warning,
             )
-        elif loading > norm_thresh:
+        elif loading > loading_normal:
             create_alarm(
                 alarm_id, "warning",
                 f"Line {line_id} loading warning: {loading:.1f}%",
-                "line_loading_pct", loading, norm_thresh,
+                "line_loading_pct", loading, loading_normal,
             )
-        elif loading < norm_thresh - _LINE_CLEAR_MARGIN:
+        elif loading < loading_normal - _LINE_CLEAR_MARGIN:
             clear_alarm(alarm_id)
 
     for gen in data.get("generators", []):
@@ -152,24 +151,23 @@ def check_thresholds(data: dict):
             continue
 
         utilization = output / capacity
-        t = THRESHOLDS["generator_capacity_pct"]
-        norm_thresh = t["normal"]
-        warn_thresh = t["warning"]
+        gen_normal  = THRESHOLDS["generator_capacity_pct"]["normal"]
+        gen_warning = THRESHOLDS["generator_capacity_pct"]["warning"]
         alarm_id = f"gen_overload_{gen_id}"
 
-        if utilization > warn_thresh:
+        if utilization > gen_warning:
             create_alarm(
                 alarm_id, "critical",
                 f"Generator {gen_id} overloaded: {utilization:.0%}",
-                "generator_capacity_pct", utilization, warn_thresh,
+                "generator_capacity_pct", utilization, gen_warning,
             )
-        elif utilization > norm_thresh:
+        elif utilization > gen_normal:
             create_alarm(
                 alarm_id, "warning",
                 f"Generator {gen_id} near capacity: {utilization:.0%}",
-                "generator_capacity_pct", utilization, norm_thresh,
+                "generator_capacity_pct", utilization, gen_normal,
             )
-        elif utilization < norm_thresh - _GEN_CLEAR_MARGIN:
+        elif utilization < gen_normal - _GEN_CLEAR_MARGIN:
             clear_alarm(alarm_id)
 
     handle_critical_alarms()
