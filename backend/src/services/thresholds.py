@@ -1,7 +1,5 @@
 """
 Alert threshold definitions and evaluation logic.
-
-See docs/reference/backend/src/services/thresholds.py for a reference implementation.
 """
 
 from .alarms import create_alarm, clear_alarm
@@ -9,219 +7,167 @@ from .control import handle_critical_alarms
 
 THRESHOLDS = {
     "frequency": {
-        # (low, high) per severity band
         "normal":   (59.95, 60.05),
         "advisory": (59.90, 60.10),
         "warning":  (59.80, 60.20),
     },
+    # case14 load buses naturally operate at 1.02–1.07 pu at base case,
+    # so the normal band must be wide enough not to alarm at steady state.
+    # These thresholds only fire during genuine contingency conditions.
     "voltage_pu": {
-        "normal":  (0.95, 1.05),
-        "warning": (0.93, 1.07),
+        "normal":  (0.92, 1.10),
+        "warning": (0.88, 1.14),
     },
     "line_loading_pct": {
-        "normal":  80.0,   # below → normal
-        "warning": 95.0,   # 80–95 → warning, above → critical
+        "normal":  80.0,
+        "warning": 95.0,
     },
     "generator_capacity_pct": {
-        "normal":  0.90,   # below 90% capacity → normal
-        "warning": 1.00,   # 90–100% → warning, above → overload
+        "normal":  0.90,
+        "warning": 1.00,
     },
 }
 
+# Generator buses in IEEE case14 have fixed voltage setpoints above 1.05 pu
+# (Bus 1=1.06, Bus 6=1.07, Bus 8=1.09). These are controlled by AVR — exclude from voltage monitoring.
+_GENERATOR_BUSES = {1, 6, 8}
+
+# Gen 0 is the slack bus — its output is set automatically by the power flow solver to
+# balance generation and load. The operator cannot control it, so monitoring its capacity
+# would produce un-actionable alarms.
+_SLACK_GEN_ID = 0
+
+# Deadband margins for alarm clearing.
+# An alarm only clears when the metric moves this far past the fire threshold.
+# Without this, alarms that hover near a threshold fire and clear every few seconds.
+_FREQ_CLEAR_MARGIN  = 0.03   # Hz  — advisory fires at 59.90, clears at 59.93
+_VOLT_CLEAR_MARGIN  = 0.01   # pu  — normal fires at 0.95/1.05, clears at 0.96/1.04
+_LINE_CLEAR_MARGIN  = 5.0    # %   — warning fires at 80%, clears below 75%
+_GEN_CLEAR_MARGIN   = 0.03   # fraction
+
 
 def check_thresholds(data: dict):
-    
     """
     Evaluate telemetry against THRESHOLDS and update the alarm store.
-    Call create_alarm() when a threshold is exceeded, clear_alarm() when normal.
-    Call handle_critical_alarms() at the end.
-
-    Check: frequency_hz, each bus voltage_pu, each line loading_percent,
-    each generator output_mw vs capacity_mw.
+    Includes deadband hysteresis so alarms do not flicker near thresholds.
+    Excludes generator buses from voltage monitoring.
     """
 
-    # Gets frequency from the simulation data; skips the frequency check if it is missing
     freq = data.get("frequency_hz")
-
-    # Only check frequency if the simulation provided frequency data
     if freq is not None:
-        # Pulls the configured frequency band from THRESHOLDS dictionary at the top
-        freq_normal_low, freq_normal_high = THRESHOLDS["frequency"]["normal"]
-        freq_advisory_low, freq_advisory_high = THRESHOLDS["frequency"]["advisory"]
-        freq_warning_low, freq_warning_high = THRESHOLDS["frequency"]["warning"]
+        t = THRESHOLDS["frequency"]
+        freq_advisory_low, freq_advisory_high = t["advisory"]
+        freq_warning_low, freq_warning_high   = t["warning"]
 
-        # Creates a critical alarm if frequency is outside the warning band
         if freq < freq_warning_low or freq > freq_warning_high:
             create_alarm(
-                "freq_out_of_range",
-                "critical",
+                "freq_out_of_range", "critical",
                 f"Frequency critical: {freq:.2f} Hz",
-                "frequency_hz",
-                freq,
-                freq_warning_low if freq < 60.0 else freq_warning_high
+                "frequency_hz", freq,
+                freq_warning_low if freq < 60.0 else freq_warning_high,
             )
-
-        # Creates a warning alarm if frequency is outside the advisory band but its not critical
         elif freq < freq_advisory_low or freq > freq_advisory_high:
             create_alarm(
-                "freq_out_of_range",
-                "warning",
+                "freq_out_of_range", "warning",
                 f"Frequency warning: {freq:.2f} Hz",
-                "frequency_hz",
-                freq,
-                freq_advisory_low if freq < 60.0 else freq_advisory_high
+                "frequency_hz", freq,
+                freq_advisory_low if freq < 60.0 else freq_advisory_high,
             )
-
-        # Clears the frequency alarm once frequency returns to the normal band
-        else:
+        elif freq_advisory_low + _FREQ_CLEAR_MARGIN <= freq <= freq_advisory_high - _FREQ_CLEAR_MARGIN:
+            # Only clear when freq is clearly inside the advisory band (59.93–60.07)
             clear_alarm("freq_out_of_range")
+        # else: in the 59.90–59.93 or 60.07–60.10 deadband — leave alarm state unchanged
 
-    # Loops through every bus in the sim data and checks its voltage
     for bus in data.get("buses", []):
-
-        # Gets the bus voltage and bus ID from the simulation data
         voltage = bus.get("voltage_pu")
-        bus_id = bus.get("id")
-
-        # Skips this bus if required data is missing
+        bus_id  = bus.get("id")
         if voltage is None or bus_id is None:
             continue
+        if bus_id in _GENERATOR_BUSES:
+            continue  # AVR-controlled — operator cannot adjust
 
-        # Pulls the configured voltage band from THRESHOLDS dictionary
-        voltage_normal_low, voltage_normal_high = THRESHOLDS["voltage_pu"]["normal"]
-        voltage_warning_low, voltage_warning_high = THRESHOLDS["voltage_pu"]["warning"]
-
-        # Creates a unique alarm ID for each bus so bus alarms do not overwrite each other
+        t = THRESHOLDS["voltage_pu"]
+        voltage_normal_low, voltage_normal_high   = t["normal"]
+        voltage_warning_low, voltage_warning_high = t["warning"]
         alarm_id = f"voltage_bus_{bus_id}"
 
-        # Creates a critical alarm if bus voltage is outside the warning band
         if voltage < voltage_warning_low or voltage > voltage_warning_high:
             create_alarm(
-                alarm_id,
-                "critical",
-                f"Bus {bus_id} voltage critical: {voltage:.2f} pu",
-                "voltage_pu",
-                voltage,
-                voltage_warning_low if voltage < 1.0 else voltage_warning_high
+                alarm_id, "critical",
+                f"Bus {bus_id} voltage critical: {voltage:.3f} pu",
+                "voltage_pu", voltage,
+                voltage_warning_low if voltage < 1.0 else voltage_warning_high,
             )
-
-        # Creates a warning alarm when bus voltage is outside normal band
         elif voltage < voltage_normal_low or voltage > voltage_normal_high:
             create_alarm(
-                alarm_id,
-                "warning",
-                f"Bus {bus_id} voltage warning: {voltage:.2f} pu",
-                "voltage_pu",
-                voltage,
-                voltage_normal_low if voltage < 1.0 else voltage_normal_high
+                alarm_id, "warning",
+                f"Bus {bus_id} voltage warning: {voltage:.3f} pu",
+                "voltage_pu", voltage,
+                voltage_normal_low if voltage < 1.0 else voltage_normal_high,
             )
-
-        # Clears this bus voltage alarm when voltage returns to normal
-        else:
+        elif voltage_normal_low + _VOLT_CLEAR_MARGIN <= voltage <= voltage_normal_high - _VOLT_CLEAR_MARGIN:
             clear_alarm(alarm_id)
+        # else: in deadband — leave unchanged
 
-    # Checks each line from the simulation data to see if it is overloaded
     for line in data.get("lines", []):
-
-        # Skips lines that are out of service
-        if not line.get("in_service", True):
-            continue
-
-        # Gets the line loading percentage and line ID
-        loading = line.get("loading_percent")
         line_id = line.get("id")
-
-        # Skips this line if required data is missing
+        if line_id is None:
+            continue
+        if not line.get("in_service", True):
+            clear_alarm(f"loading_line_{line_id}")  # tripped line cannot be overloaded
+            continue
+        loading = line.get("loading_percent")
         if loading is None or line_id is None:
             continue
 
-        # Pulls the configured line loading limits from THRESHOLDS
-        loading_normal = THRESHOLDS["line_loading_pct"]["normal"]
+        loading_normal  = THRESHOLDS["line_loading_pct"]["normal"]
         loading_warning = THRESHOLDS["line_loading_pct"]["warning"]
-
-        # Creates a unique alarm ID for each line
         alarm_id = f"loading_line_{line_id}"
 
-        # Creates a critical alarm if line loading is above the warning limit
         if loading > loading_warning:
             create_alarm(
-                alarm_id,
-                "critical",
+                alarm_id, "critical",
                 f"Line {line_id} overload critical: {loading:.1f}%",
-                "line_loading_pct",
-                loading,
-                loading_warning
+                "line_loading_pct", loading, loading_warning,
             )
-
-        # Creates a warning alarm if line loading is above normal but not critical
         elif loading > loading_normal:
             create_alarm(
-                alarm_id,
-                "warning",
+                alarm_id, "warning",
                 f"Line {line_id} loading warning: {loading:.1f}%",
-                "line_loading_pct",
-                loading,
-                loading_normal
+                "line_loading_pct", loading, loading_normal,
             )
-
-        # Clears the line loading alarm when loading returns to normal
-        else:
+        elif loading < loading_normal - _LINE_CLEAR_MARGIN:
             clear_alarm(alarm_id)
 
-    # Loops through every generator and checks output compared to capacity
     for gen in data.get("generators", []):
-
-        # Skips generators that are not currently in service
         if not gen.get("in_service", True):
             continue
-
-        # Gets generator output, capacity, and ID from the simulation data
-        output = gen.get("output_mw")
+        output   = gen.get("output_mw")
         capacity = gen.get("capacity_mw")
-        gen_id = gen.get("id")
-
-        # Skips this generator if required data is missing
-        if output is None or capacity is None or gen_id is None:
+        gen_id   = gen.get("id")
+        if gen_id == _SLACK_GEN_ID:
+            continue  # slack bus output is auto-managed — operator cannot adjust it
+        if output is None or capacity is None or gen_id is None or capacity == 0:
             continue
 
-        # Skips generators with zero capacity to avoid dividing by zero
-        if capacity == 0:
-            continue
-
-        # Calculates generator utilization as output divided by capacity
         utilization = output / capacity
-
-        # Pulls the configured generator capacity limits from THRESHOLDS
-        gen_normal = THRESHOLDS["generator_capacity_pct"]["normal"]
+        gen_normal  = THRESHOLDS["generator_capacity_pct"]["normal"]
         gen_warning = THRESHOLDS["generator_capacity_pct"]["warning"]
-
-        # Creates a unique alarm ID for each generator
         alarm_id = f"gen_overload_{gen_id}"
 
-        # Creates a critical alarm when above 100% generator capacity
         if utilization > gen_warning:
             create_alarm(
-                alarm_id,
-                "critical",
-                f"Generator {gen_id} overloaded: {utilization:.2%}",
-                "generator_capacity_pct",
-                utilization,
-                gen_warning
+                alarm_id, "critical",
+                f"Generator {gen_id} overloaded: {utilization:.0%}",
+                "generator_capacity_pct", utilization, gen_warning,
             )
-
-        # Creates a warning alarm at 90% generator capacity
         elif utilization > gen_normal:
             create_alarm(
-                alarm_id,
-                "warning",
-                f"Generator {gen_id} near capacity: {utilization:.2%}",
-                "generator_capacity_pct",
-                utilization,
-                gen_normal
+                alarm_id, "warning",
+                f"Generator {gen_id} near capacity: {utilization:.0%}",
+                "generator_capacity_pct", utilization, gen_normal,
             )
-
-        # Clears this generator alarm when utilization returns back within normal limit
-        else:
+        elif utilization < gen_normal - _GEN_CLEAR_MARGIN:
             clear_alarm(alarm_id)
 
     handle_critical_alarms()

@@ -15,8 +15,8 @@ def get_alarms(
 ):
     """Return active (uncleared) and recently cleared alarms."""
     all_alarms = list(alarms.values())
-    active = [a for a in all_alarms if "cleared_at" not in a]
-    recent = [a for a in all_alarms if "cleared_at" in a]
+    active = [a for a in all_alarms if a.get("cleared_at") is None]
+    recent = [a for a in all_alarms if a.get("cleared_at") is not None]
 
     if severity:
         active = [a for a in active if a["severity"] == severity.lower()]

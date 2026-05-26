@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 import asyncio
 
-from .routes import metrics, alarms, control
+from .routes import metrics, alarms, control, disturbance
 from .services import polling
 from .db import influx
 
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(metrics.router)
 app.include_router(alarms.router)
 app.include_router(control.router)
+app.include_router(disturbance.router)
 
 
 @app.get("/health", tags=["health"])
