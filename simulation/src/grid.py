@@ -69,10 +69,10 @@ def create_network():
         if line_mask.any():
             vn_kv = float(net.bus.at[fb, "vn_kv"])
             net.line.loc[line_mask, "max_i_ka"] = lc["rated_mw"] / (math.sqrt(3) * vn_kv)
-        else:
-            trafo_mask = (net.trafo["hv_bus"] == fb) & (net.trafo["lv_bus"] == tb)
-            if trafo_mask.any():
-                net.trafo.loc[trafo_mask, "sn_mva"] = lc["rated_mw"]
+        # Transformers: do NOT modify sn_mva — it sets the per-unit impedance base and
+        # changing it while keeping vk_percent fixed alters the actual network impedance,
+        # causing Newton-Raphson to diverge. Transformer loading_percent comes from
+        # pandapower's own calculation using the original case14 ratings.
 
     return net
 
@@ -145,7 +145,7 @@ def _run_power_flow() -> dict | None:
                 "ext_grid": net.res_ext_grid.copy(),
             }
         except Exception as e:
-            logger.debug("Power flow failed (init=%s): %s", init, e)
+            logger.warning("Power flow failed (init=%s): %s", init, e)
     logger.warning("Power flow failed to converge")
     return None
 
