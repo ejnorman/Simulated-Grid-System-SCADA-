@@ -29,9 +29,9 @@ BUS_CONFIG = [
 GENERATOR_CONFIG = [
     {"id": 0, "bus": 1, "base_output_mw": 232.4, "capacity_mw": 250.0},
     {"id": 1, "bus": 2, "base_output_mw": 40.0,  "capacity_mw": 60.0},
-    {"id": 2, "bus": 3, "base_output_mw": 0.0,   "capacity_mw": 40.0},
-    {"id": 3, "bus": 6, "base_output_mw": 0.0,   "capacity_mw": 25.0},
-    {"id": 4, "bus": 8, "base_output_mw": 0.0,   "capacity_mw": 25.0},
+    {"id": 2, "bus": 3, "base_output_mw": 20.0,  "capacity_mw": 40.0},
+    {"id": 3, "bus": 6, "base_output_mw": 20.0,  "capacity_mw": 25.0},
+    {"id": 4, "bus": 8, "base_output_mw": 20.0,  "capacity_mw": 25.0},
 ]
 
 # 20 transmission lines (IDs 0–19)
