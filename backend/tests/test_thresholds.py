@@ -44,6 +44,18 @@ def test_frequency_warning_alarm_created():
     assert "freq_out_of_range" in alarms
     assert alarms["freq_out_of_range"]["severity"] == "warning"
 
+def test_high_frequency_critical_alarm_created():
+    check_thresholds(_normal_data(frequency_hz=60.30))
+
+    assert "freq_out_of_range" in alarms
+    assert alarms["freq_out_of_range"]["severity"] == "critical"
+    assert alarms["freq_out_of_range"]["metric"] == "frequency_hz"
+
+def test_high_frequency_warning_alarm_created():
+    check_thresholds(_normal_data(frequency_hz=60.15))
+
+    assert "freq_out_of_range" in alarms
+    assert alarms["freq_out_of_range"]["severity"] == "warning"
 
 def test_frequency_alarm_clears_when_clearly_normal():
     create_alarm(
@@ -90,6 +102,21 @@ def test_bus_voltage_warning_alarm_created():
     assert "voltage_bus_2" in alarms
     assert alarms["voltage_bus_2"]["severity"] == "warning"
 
+def test_high_bus_voltage_critical_alarm_created():
+    data = _normal_data(buses=[{"id": 2, "voltage_pu": 1.15}])
+    check_thresholds(data)
+
+    assert "voltage_bus_2" in alarms
+    assert alarms["voltage_bus_2"]["severity"] == "critical"
+    assert alarms["voltage_bus_2"]["metric"] == "voltage_pu"
+
+
+def test_high_bus_voltage_warning_alarm_created():
+    data = _normal_data(buses=[{"id": 2, "voltage_pu": 1.12}])
+    check_thresholds(data)
+
+    assert "voltage_bus_2" in alarms
+    assert alarms["voltage_bus_2"]["severity"] == "warning"
 
 def test_bus_voltage_alarm_clears_when_normal():
     create_alarm(
