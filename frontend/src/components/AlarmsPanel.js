@@ -1,39 +1,78 @@
 import {
-  Paper, Typography, Divider, Box, Chip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper,
+  Typography,
+  Divider,
+  Box,
+  Chip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Button,
-} from '@mui/material';
-import NotificationsIcon from '@mui/icons-material/Notifications';
-import StatusChip from './StatusChip';
-import { acknowledgeAlarm } from '../api/client';
+} from "@mui/material";
+import NotificationsIcon from "@mui/icons-material/Notifications";
+import StatusChip from "./StatusChip";
+import { acknowledgeAlarm } from "../api/client";
 
 // Shown only on ACTIVE (not cleared) alarms to guide the operator toward a resolution.
 const ACTION_GUIDE = {
   frequency_hz:
-    'Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 1, 2, 3, or 4.',
+    "Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 1, 2, 3, or 4.",
   voltage_pu:
-    'A bus voltage is out of range. In Breaker Control, close any lines shown as OPEN on the diagram to restore normal power paths.',
+    "A bus voltage is out of range. In Breaker Control, close any lines shown as OPEN on the diagram to restore normal power paths.",
   line_loading_pct:
-    'A line is carrying too much power. In Breaker Control, trip this line to remove it from service. Power will reroute — watch for new overloads on other lines.',
+    "A line is carrying too much power. In Breaker Control, trip this line to remove it from service. Power will reroute — watch for new overloads on other lines.",
   generator_capacity_pct:
-    'A generator is near or over its capacity limit. In Generator Control, send it a negative MW adjustment (e.g. −10), then add the same MW to another generator to keep the grid balanced.',
+    "A generator is near or over its capacity limit. In Generator Control, send it a negative MW adjustment (e.g. −10), then add the same MW to another generator to keep the grid balanced.",
 };
 
 function StatusBadge({ alarm }) {
   if (alarm.cleared_at) {
-    return <Chip label="CLEARED" size="small"
-      sx={{ bgcolor: '#37474f', color: '#90a4ae', fontWeight: 700, fontSize: '0.65rem' }} />;
+    return (
+      <Chip
+        label="CLEARED"
+        size="small"
+        sx={{
+          bgcolor: "#37474f",
+          color: "#90a4ae",
+          fontWeight: 700,
+          fontSize: "0.65rem",
+        }}
+      />
+    );
   }
   if (alarm.acknowledged) {
-    return <Chip label="ACKNOWLEDGED" size="small"
-      sx={{ bgcolor: '#1565c0', color: '#90caf9', fontWeight: 700, fontSize: '0.65rem' }} />;
+    return (
+      <Chip
+        label="ACKNOWLEDGED"
+        size="small"
+        sx={{
+          bgcolor: "#1565c0",
+          color: "#90caf9",
+          fontWeight: 700,
+          fontSize: "0.65rem",
+        }}
+      />
+    );
   }
-  return <Chip label="ACTIVE" size="small"
-    sx={{ bgcolor: '#7f1d1d', color: '#fca5a5', fontWeight: 700, fontSize: '0.65rem' }} />;
+  return (
+    <Chip
+      label="ACTIVE"
+      size="small"
+      sx={{
+        bgcolor: "#7f1d1d",
+        color: "#fca5a5",
+        fontWeight: 700,
+        fontSize: "0.65rem",
+      }}
+    />
+  );
 }
 
-const CELL = { borderColor: '#2a2a2a', py: 0.75 };
-const MAX_RECENT = 5;  // keep the cleared-alarm history short
+const CELL = { borderColor: "#2a2a2a", py: 0.75 };
+const MAX_RECENT = 5; // keep the cleared-alarm history short
 
 export default function AlarmsPanel({ alarms, onRefresh }) {
   const active = alarms?.active ?? [];
@@ -49,31 +88,37 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
 
   const handleAcknowledge = async (alarmId) => {
     try {
-      await acknowledgeAlarm(alarmId, 'operator_1');
+      await acknowledgeAlarm(alarmId, "operator_1");
       onRefresh();
     } catch (err) {
-      console.error('Acknowledge failed:', err);
+      console.error("Acknowledge failed:", err);
     }
   };
 
   return (
-    <Paper sx={{ p: 2, height: '100%' }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <NotificationsIcon fontSize="small" sx={{ color: '#ffa726' }} />
+    <Paper sx={{ p: 2, height: "100%" }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <NotificationsIcon fontSize="small" sx={{ color: "#ffa726" }} />
           <Typography variant="h6">Active Alarms</Typography>
         </Box>
         <Chip
           label={`${active.length} Active`}
           size="small"
           sx={{
-            bgcolor: active.length > 0 ? '#7f1d1d' : '#333',
-            color:   active.length > 0 ? '#fca5a5' : '#aaa',
+            bgcolor: active.length > 0 ? "#7f1d1d" : "#333",
+            color: active.length > 0 ? "#fca5a5" : "#aaa",
             fontWeight: 700,
           }}
         />
       </Box>
-      <Divider sx={{ my: 1, borderColor: '#2a2a2a' }} />
+      <Divider sx={{ my: 1, borderColor: "#2a2a2a" }} />
 
       {all.length === 0 ? (
         <Typography color="text.secondary" variant="body2" sx={{ py: 1 }}>
@@ -84,27 +129,46 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
           <Table size="small">
             <TableHead>
               <TableRow>
-                {['Time', 'Severity', 'Message', 'Status', 'Action'].map(h => (
-                  <TableCell key={h} sx={{ ...CELL, color: 'text.secondary', fontWeight: 600 }}>{h}</TableCell>
-                ))}
+                {["Time", "Severity", "Message", "Status", "Action"].map(
+                  (h) => (
+                    <TableCell
+                      key={h}
+                      sx={{ ...CELL, color: "text.secondary", fontWeight: 600 }}
+                    >
+                      {h}
+                    </TableCell>
+                  ),
+                )}
               </TableRow>
             </TableHead>
             <TableBody>
               {all.map((alarm) => (
-                <TableRow key={alarm.id + (alarm.timestamp ?? '')}
-                  sx={{ opacity: alarm.cleared_at ? 0.5 : 1 }}>
-                  <TableCell sx={{ ...CELL, whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                <TableRow
+                  key={alarm.id + (alarm.timestamp ?? "")}
+                  sx={{ opacity: alarm.cleared_at ? 0.5 : 1 }}
+                >
+                  <TableCell
+                    sx={{ ...CELL, whiteSpace: "nowrap", fontSize: "0.75rem" }}
+                  >
                     {new Date(alarm.timestamp).toLocaleTimeString()}
                   </TableCell>
                   <TableCell sx={CELL}>
                     <StatusChip status={alarm.severity} />
                   </TableCell>
                   <TableCell sx={{ ...CELL }}>
-                    <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>{alarm.message}</Typography>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontSize: "0.8rem" }}
+                    ></Typography>
                     {/* Only show action guide for active alarms, never for cleared rows */}
                     {!alarm.cleared_at && ACTION_GUIDE[alarm.metric] && (
-                      <Typography variant="caption" sx={{ color: '#64b5f6', display: 'block', mt: 0.25 }}>
-                        → {ACTION_GUIDE[alarm.metric]}
+                      <Typography
+                        variant="body2"
+                        sx={{ fontSize: "0.8rem" }}
+                        title={ACTION_GUIDE[alarm.metric]}
+                      >
+                        {/*Moved alarm.message to title attribute to reduce clutter*/}
+                        {alarm.message}
                       </Typography>
                     )}
                   </TableCell>
@@ -113,9 +177,20 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
                   </TableCell>
                   <TableCell sx={CELL}>
                     {!alarm.acknowledged && !alarm.cleared_at && (
-                      <Button size="small" variant="outlined" onClick={() => handleAcknowledge(alarm.id)}
-                        sx={{ borderColor: '#42a5f5', color: '#42a5f5', fontSize: '0.7rem',
-                          '&:hover': { borderColor: '#90caf9', color: '#90caf9' } }}>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => handleAcknowledge(alarm.id)}
+                        sx={{
+                          borderColor: "#42a5f5",
+                          color: "#42a5f5",
+                          fontSize: "0.7rem",
+                          "&:hover": {
+                            borderColor: "#90caf9",
+                            color: "#90caf9",
+                          },
+                        }}
+                      >
                         Acknowledge
                       </Button>
                     )}
