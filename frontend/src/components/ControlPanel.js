@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Paper, Typography, Divider, Box, Button, Alert, Grid,
-  FormControl, InputLabel, Select, MenuItem, Tooltip,
+  FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import BoltIcon from '@mui/icons-material/Bolt';
 import PowerOffIcon from '@mui/icons-material/PowerOff';
@@ -9,11 +9,11 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { sendControlCommand, sendDisturbance } from '../api/client';
 
 const GENERATORS = [
-  { value: 0, label: 'Gen 0 — Bus 1 (slack)' },
-  { value: 1, label: 'Gen 1 — Bus 2' },
-  { value: 2, label: 'Gen 2 — Bus 3' },
-  { value: 3, label: 'Gen 3 — Bus 6' },
-  { value: 4, label: 'Gen 4 — Bus 8' },
+  { value: 0, label: 'Gen 1 — Bus 1 (slack)' },
+  { value: 1, label: 'Gen 2 — Bus 2' },
+  { value: 2, label: 'Gen 3 — Bus 3' },
+  { value: 3, label: 'Gen 6 — Bus 6' },
+  { value: 4, label: 'Gen 8 — Bus 8' },
 ];
 
 const LINE_LABELS = {
@@ -24,10 +24,12 @@ const LINE_LABELS = {
 
 const SECTION_LABEL = { textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.75rem' };
 
-export default function ControlPanel() {
-  const [genId,    setGenId]    = useState(1);
-  const [lineId,   setLineId]   = useState(0);
-  const [feedback, setFeedback] = useState(null);
+export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onMessage }) {
+  const [genId,      setGenId]      = useState(1);
+  const [lineId,     setLineId]     = useState(0);
+  const [scenarioId, setScenarioId] = useState('generator_trip');
+
+  const genLabel = GENERATORS.find(g => g.value === Number(genId))?.label.split(' — ')[0] ?? `Gen ${genId}`;
 
   const sendGen = async (delta) => {
     try {
@@ -36,9 +38,9 @@ export default function ControlPanel() {
         target: { generator_id: Number(genId), delta_mw: delta },
         timestamp: new Date().toISOString(),
       });
-      setFeedback({ type: 'success', text: `Gen ${genId}: ${delta > 0 ? '+' : ''}${delta} MW applied` });
+      onMessage?.({ category: 'Control', text: `${genLabel}: ${delta > 0 ? '+' : ''}${delta} MW applied` });
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.detail ?? err.message });
+      onMessage?.({ category: 'Error', text: err.response?.data?.detail ?? err.message });
     }
   };
 
@@ -49,24 +51,53 @@ export default function ControlPanel() {
         target: { line_id: Number(lineId) },
         timestamp: new Date().toISOString(),
       });
-      setFeedback({ type: 'success', text: `Line ${lineId}: ${action === 'trip_breaker' ? 'tripped' : 'closed'}` });
+      onMessage?.({ category: 'Control', text: `Line ${lineId}: ${action === 'trip_breaker' ? 'tripped' : 'closed'}` });
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.detail ?? err.message });
+      onMessage?.({ category: 'Error', text: err.response?.data?.detail ?? err.message });
     }
   };
 
-  const SCENARIO_FEEDBACK = {
-    generator_trip: 'Gen 1 (Bus 2) tripped offline — generation lost. Frequency will drop. Use Generator Control (+MW on Gen 2–4) to respond.',
-    load_spike:     'Load at Bus 2 doubled — demand increased. Frequency will drop. Use Generator Control (+MW on Gen 1–4) to respond.',
-    line_outage:    'Line 1 (Bus 1→5) tripped — Bus 1 must now reroute all power through Line 0 (1→2), which was already near capacity. Line 0 will overload and alarm critical. Use Breaker Control to trip Line 0 or close Line 1 to restore it.',
+  const restoreGen = async () => {
+    try {
+      await sendControlCommand({
+        command_type: 'restore_generator',
+        target: { generator_id: Number(genId) },
+        timestamp: new Date().toISOString(),
+      });
+      onMessage?.({ category: 'Control', text: `${genLabel} restored — online at 0 MW. Use Generator Control to ramp up.` });
+    } catch (err) {
+      onMessage?.({ category: 'Error', text: err.response?.data?.detail ?? err.message });
+    }
   };
 
-  const sendScenario = async (type, target) => {
+  const SCENARIOS = [
+    { value: 'generator_trip',    label: 'Generator Trip',    target: { generator_id: 1 } },
+    { value: 'load_spike',        label: 'Load Spike',        target: { load_id: 0, percent_increase: 100 } },
+    { value: 'line_outage',       label: 'Line Outage',       target: { line_id: 1 } },
+    { value: 'generation_crisis', label: 'Generation Crisis', target: {} },
+    { value: 'line_cascade',      label: 'N-1 Cascade',       target: {} },
+  ];
+
+  const SCENARIO_FEEDBACK = {
+    generator_trip:    'Gen 2 (Bus 2) tripped offline — generation lost. Frequency will drop. Use Generator Control (+MW on Gen 3, 6, or 8) to respond.',
+    load_spike:        'Load at Bus 2 doubled — demand increased. Frequency will drop. Use Generator Control (+MW on Gen 2, 3, 6, or 8) to respond.',
+    line_outage:       'Line 1 (Bus 1→5) tripped — Bus 1 must now reroute all power through Line 0 (1→2), which was already near capacity. Line 0 will overload and alarm critical. Use Breaker Control to trip Line 0 or close Line 1 to restore it.',
+    generation_crisis: 'Gen 2 (Bus 2) and Gen 8 (Bus 8) tripped simultaneously — 80 MW lost. Frequency is dropping fast. Ramp up Gen 3 and Gen 6, then restore and ramp the tripped generators back online.',
+    line_cascade:      'Line 6 (Bus 4→5) tripped — Line 3 (Bus 2→4) is congesting. Solution: ramp Gen 3 (Bus 3) — it supplies Bus 4 directly via Line 5 (3→4), bypassing Line 3. Each +10 MW on Gen 3 reduces Gen 1 output and Line 3 loading simultaneously.',
+  };
+
+  const sendScenario = async () => {
+    const scenario = SCENARIOS.find(s => s.value === scenarioId);
+    if (!scenario) return;
     try {
-      await sendDisturbance({ type, target });
-      setFeedback({ type: 'warning', text: SCENARIO_FEEDBACK[type] ?? `Disturbance triggered: ${type}` });
+      await sendDisturbance({ type: scenario.value, target: scenario.target });
+      if (scenario.value === 'line_cascade') {
+        onGovernorChange?.(true);
+        onPeakDemandChange?.(true);
+      }
+      onMessage?.({ category: 'Scenario', text: SCENARIO_FEEDBACK[scenario.value] });
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.detail ?? err.message });
+      onMessage?.({ category: 'Error', text: err.response?.data?.detail ?? err.message });
     }
   };
 
@@ -92,25 +123,29 @@ export default function ControlPanel() {
 
           {genId === 0 ? (
             <Alert severity="info" sx={{ py: 0.5, fontSize: '0.75rem' }}>
-              Gen 0 is the <strong>slack bus</strong> — its output is set automatically
-              by the simulator to balance generation and load. Use Gens 1–4 for manual control.
+              Gen 1 is the <strong>slack bus</strong> — its output is set automatically
+              by the simulator to balance generation and load. Use Gen 2, 3, 6, or 8 for manual control.
             </Alert>
           ) : (
             <>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7f1d1d', '&:hover': { bgcolor: '#991b1b' } }}
-                  onClick={() => sendGen(-50)}>-50</Button>
-                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7c2d12', '&:hover': { bgcolor: '#9a3412' } }}
                   onClick={() => sendGen(-10)}>-10</Button>
+                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7c2d12', '&:hover': { bgcolor: '#9a3412' } }}
+                  onClick={() => sendGen(-5)}>-5</Button>
                 <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#14532d', '&:hover': { bgcolor: '#166534' } }}
-                  onClick={() => sendGen(10)}>+10</Button>
+                  onClick={() => sendGen(5)}>+5</Button>
                 <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#1e3a5f', '&:hover': { bgcolor: '#1e40af' } }}
-                  onClick={() => sendGen(50)}>+50</Button>
+                  onClick={() => sendGen(10)}>+10</Button>
               </Box>
               <Typography variant="caption" color="text.secondary"
                 sx={{ display: 'block', mt: 0.5, textAlign: 'center' }}>
                 MW adjustment
               </Typography>
+              <Button variant="outlined" size="small" fullWidth sx={{ mt: 1, borderColor: '#4caf50', color: '#4caf50' }}
+                onClick={restoreGen}>
+                Restore Generator
+              </Button>
             </>
           )}
         </Grid>
@@ -147,32 +182,22 @@ export default function ControlPanel() {
             <WarningAmberIcon fontSize="small" sx={{ color: '#ffa726' }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Test Scenarios</Typography>
           </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            <Button variant="outlined" fullWidth
-              sx={{ borderColor: '#444', color: 'text.primary', justifyContent: 'flex-start' }}
-              onClick={() => sendScenario('generator_trip', { generator_id: 1 })}>
-              Generator Trip
-            </Button>
-            <Button variant="outlined" fullWidth
-              sx={{ borderColor: '#444', color: 'text.primary', justifyContent: 'flex-start' }}
-              onClick={() => sendScenario('load_spike', { load_id: 0, percent_increase: 100 })}>
-              Load Spike
-            </Button>
-            <Button variant="outlined" fullWidth
-              sx={{ borderColor: '#444', color: 'text.primary', justifyContent: 'flex-start' }}
-              onClick={() => sendScenario('line_outage', { line_id: 1 })}>
-              Line Outage
-            </Button>
-          </Box>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+            <InputLabel>Scenario</InputLabel>
+            <Select value={scenarioId} label="Scenario" onChange={(e) => setScenarioId(e.target.value)}>
+              {SCENARIOS.map(s => (
+                <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant="outlined" fullWidth startIcon={<WarningAmberIcon />}
+            onClick={sendScenario}
+            sx={{ borderColor: '#ffa726', color: '#ffa726', '&:hover': { borderColor: '#ffb74d', color: '#ffb74d' } }}>
+            Trigger Scenario
+          </Button>
         </Grid>
 
       </Grid>
-
-      {feedback && (
-        <Alert severity={feedback.type} onClose={() => setFeedback(null)} sx={{ mt: 2 }}>
-          {feedback.text}
-        </Alert>
-      )}
     </Paper>
   );
 }

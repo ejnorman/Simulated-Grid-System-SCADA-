@@ -19,22 +19,12 @@ SCALING_FACTOR = 50  # MW per Hz of frequency deviation
 def handle_critical_alarms():
     """
     Inspect the active alarm store and issue automatic control commands where required.
+    Frequency auto-response is intentionally disabled — recovery is operator-driven
+    (manual MW ramp) or governor-driven (UI toggle). Line overloads are alert-only.
     """
     from .alarms import alarms
 
-    # Scenario 1 — Under-frequency: auto-increase generation on generator 0
-    freq_alarm = alarms.get("freq_out_of_range")
-    if freq_alarm and freq_alarm["severity"] == "critical" and not freq_alarm.get("cleared_at"):
-        current_freq = freq_alarm["value"]
-        deficit_mw = (60.0 - current_freq) * SCALING_FACTOR
-        httpx.post(f"{SIMULATION_URL}/control", json={
-            "command_type": "adjust_generation",
-            "target": {"generator_id": 0, "delta_mw": deficit_mw},
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        })
-        print(f"[auto-control] Under-frequency response: +{deficit_mw:.1f} MW to generator 0")
-
-    # Scenario 2 — Line overload: alert only, do NOT auto-trip (safety requirement)
+    # Line overload: alert only, do NOT auto-trip (safety requirement)
     for alarm in alarms.values():
         if (alarm.get("metric") == "line_loading_pct"
                 and alarm["severity"] == "critical"
