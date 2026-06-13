@@ -43,14 +43,22 @@ def create_network():
     # Override non-slack generator outputs and capacities.
     # pandapower uses 0-indexed buses; our constants use 1-indexed.
     # Bus 1 (index 0) is the slack bus — modeled as ext_grid, not gen; skip it.
+    # Bus 8 (index 7) is a synchronous condenser in case14() — no net.gen entry exists,
+    # so we create a real generator there rather than silently skipping it.
     for gc in GENERATOR_CONFIG:
         if gc["bus"] == 1:
             continue
         bus_idx = gc["bus"] - 1
         mask = net.gen["bus"] == bus_idx
-        net.gen.loc[mask, "p_mw"] = gc["base_output_mw"]
-        net.gen.loc[mask, "max_p_mw"] = gc["capacity_mw"]
-        net.gen.loc[mask, "min_p_mw"] = 0.0
+        if mask.any():
+            net.gen.loc[mask, "p_mw"] = gc["base_output_mw"]
+            net.gen.loc[mask, "max_p_mw"] = gc["capacity_mw"]
+            net.gen.loc[mask, "min_p_mw"] = 0.0
+        else:
+            bc = next(b for b in BUS_CONFIG if b["id"] == gc["bus"])
+            pp.create_gen(net, bus=bus_idx, p_mw=gc["base_output_mw"],
+                          vm_pu=bc["base_voltage_pu"],
+                          max_p_mw=gc["capacity_mw"], min_p_mw=0.0, in_service=True)
 
     # Override load values to match LOAD_CONFIG.
     for lc in LOAD_CONFIG:
@@ -79,7 +87,9 @@ def create_network():
 
 net = create_network()
 _frequency_hz = 60.0
-_GOVERNOR_RATE = 0.015  # fraction recovered per poll — slow enough (~2 min) for operators to respond
+_GOVERNOR_ENABLED = False   # toggled via POST /governor; when on, frequency auto-recovers at 0.015/tick
+_GOVERNOR_RATE_NOMINAL = 0.015
+_PEAK_DEMAND = False        # toggled via POST /peak-demand; scales loads 1.5× and pre-dispatches gens
 _last_res = None      # dict of copied result DataFrames from last successful runpp
 
 grid_state = {
@@ -177,7 +187,8 @@ def build_telemetry() -> dict:
     Backend and frontend depend on these exact field names.
     """
     global _frequency_hz, _last_res
-    _frequency_hz += (60.0 - _frequency_hz) * _GOVERNOR_RATE
+    if _GOVERNOR_ENABLED:
+        _frequency_hz += (60.0 - _frequency_hz) * _GOVERNOR_RATE_NOMINAL
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -231,13 +242,16 @@ def build_telemetry() -> dict:
                 "power_mw": 0.0, "power_mvar": 0.0, "loading_percent": 0.0, "in_service": False
             })
             continue
-        res = _line_res.get((l["from_bus"], l["to_bus"]))
+        res = _line_res.get((l["from_bus"], l["to_bus"])) or _line_res.get((l["to_bus"], l["from_bus"]))
         if res:
             pwr = _jitter(res[0])
+            # case14() bus voltages are stored in a normalised form, making pandapower's
+            # own loading_percent meaningless. Compute it directly from MW / rated_mw.
+            loading = abs(res[0]) / l["rated_mw"] * 100
             lines.append({
                 "id": l["id"], "from_bus": l["from_bus"], "to_bus": l["to_bus"],
                 "power_mw": pwr, "power_mvar": _jitter(res[1]),
-                "loading_percent": _jitter(res[2]), "in_service": True
+                "loading_percent": _jitter(loading), "in_service": True
             })
         else:
             # Fallback: connection not found in pandapower result (topology mismatch)
@@ -435,6 +449,98 @@ def apply_control(cmd: ControlCommand) -> dict:
         raise HTTPException(400, detail=f"Unknown command_type: {cmd.command_type}")
 
 
+def reset_grid() -> dict:
+    """
+    Restore the grid to its baseline state.
+    Rebuilds the pandapower network and resets all state variables.
+    Called by POST /reset for demo resets without a container restart.
+    """
+    global net, _frequency_hz, _last_res, grid_state, _GOVERNOR_ENABLED, _PEAK_DEMAND
+    net = create_network()
+    _frequency_hz = 60.0
+    _last_res = None
+    _GOVERNOR_ENABLED = False
+    _PEAK_DEMAND = False
+    grid_state = {
+        "generators": {
+            g["id"]: {"output_mw": g["base_output_mw"], "in_service": True}
+            for g in GENERATOR_CONFIG
+        },
+        "lines": {
+            l["id"]: {"in_service": True}
+            for l in LINE_CONFIG
+        },
+        "loads": {
+            ld["id"]: {"demand_mw": ld["base_demand_mw"], "demand_mvar": ld["base_demand_mvar"]}
+            for ld in LOAD_CONFIG
+        },
+    }
+    timestamp = datetime.now(timezone.utc).isoformat()
+    logger.info("Grid reset to baseline at %s", timestamp)
+    return {"status": "reset", "timestamp": timestamp}
+
+
+def set_governor(enabled: bool) -> dict:
+    """Enable or disable governor auto-recovery. Called by POST /governor."""
+    global _GOVERNOR_ENABLED
+    _GOVERNOR_ENABLED = enabled
+    return {"governor_enabled": enabled}
+
+
+_PEAK_GEN_SETPOINTS    = {1: 75.0, 2: 55.0, 3: 50.0, 4: 50.0}
+_PEAK_BUS4_MULTIPLIER  = 3.0  # Bus 4 is the congestion hot-spot — spike it hard
+_PEAK_OTHER_MULTIPLIER = 1.4  # modest background increase across the rest of the network
+
+
+def set_peak_demand(enabled: bool) -> dict:
+    """
+    Toggle peak demand mode. Called by POST /peak-demand.
+    ON: spikes Bus 4 load 2.5× and raises all other loads 1.4×. Pre-dispatches
+        Gen 1–4 at 75–83% capacity, leaving realistic spinning reserve.
+        Bus 4's heavy load means a Line 6 trip naturally congests Line 3 (2→4).
+    OFF: restores all loads and generator setpoints to base values.
+    """
+    global _PEAK_DEMAND
+    _PEAK_DEMAND = enabled
+
+    if enabled:
+        for ld in LOAD_CONFIG:
+            multiplier = _PEAK_BUS4_MULTIPLIER if ld["bus"] == 4 else _PEAK_OTHER_MULTIPLIER
+            peak_mw   = round(ld["base_demand_mw"]   * multiplier, 2)
+            peak_mvar = round(ld["base_demand_mvar"]  * multiplier, 2)
+            grid_state["loads"][ld["id"]]["demand_mw"]   = peak_mw
+            grid_state["loads"][ld["id"]]["demand_mvar"] = peak_mvar
+            bus_idx = ld["bus"] - 1
+            mask = net.load["bus"] == bus_idx
+            net.load.loc[mask, "p_mw"]   = peak_mw
+            net.load.loc[mask, "q_mvar"] = peak_mvar
+
+        for gen_id, target_mw in _PEAK_GEN_SETPOINTS.items():
+            gc = next(g for g in GENERATOR_CONFIG if g["id"] == gen_id)
+            grid_state["generators"][gen_id]["output_mw"] = target_mw
+            bus_idx = gc["bus"] - 1
+            mask = net.gen["bus"] == bus_idx
+            net.gen.loc[mask, "p_mw"] = target_mw
+    else:
+        for ld in LOAD_CONFIG:
+            grid_state["loads"][ld["id"]]["demand_mw"]   = ld["base_demand_mw"]
+            grid_state["loads"][ld["id"]]["demand_mvar"] = ld["base_demand_mvar"]
+            bus_idx = ld["bus"] - 1
+            mask = net.load["bus"] == bus_idx
+            net.load.loc[mask, "p_mw"]   = ld["base_demand_mw"]
+            net.load.loc[mask, "q_mvar"] = ld["base_demand_mvar"]
+
+        for gc in GENERATOR_CONFIG:
+            if gc["bus"] == 1:
+                continue
+            grid_state["generators"][gc["id"]]["output_mw"] = gc["base_output_mw"]
+            bus_idx = gc["bus"] - 1
+            mask = net.gen["bus"] == bus_idx
+            net.gen.loc[mask, "p_mw"] = gc["base_output_mw"]
+
+    return {"peak_demand": enabled}
+
+
 def apply_disturbance(disturbance: Disturbance) -> dict:
     """
     Inject a test disturbance (fault) into the grid.
@@ -445,7 +551,7 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
     - "load_spike": Suddenly increase load demand
     - "line_outage": Take a line out of service
     """
-    global _frequency_hz
+    global _frequency_hz, _GOVERNOR_ENABLED
     timestamp = datetime.now(timezone.utc).isoformat()
 
     if disturbance.type == "generator_trip":
@@ -515,6 +621,33 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
             raise HTTPException(400, detail=f"Line {line_id} does not exist")
 
         _set_line_in_service(line_id, False)
+
+    elif disturbance.type == "generation_crisis":
+        # Trip Gen 1 (Bus 2, 50 MW) and Gen 4 (Bus 8, 30 MW) simultaneously — 80 MW loss.
+        for gen_id in [1, 4]:
+            gc = next(g for g in GENERATOR_CONFIG if g["id"] == gen_id)
+            gen_state = grid_state["generators"][gen_id]
+            if not gen_state["in_service"]:
+                continue
+            lost_mw = gen_state["output_mw"]
+            gen_state["output_mw"] = 0.0
+            gen_state["in_service"] = False
+            bus_idx = gc["bus"] - 1
+            mask = net.gen["bus"] == bus_idx
+            if mask.any():
+                net.gen.loc[mask, "in_service"] = False
+            _frequency_hz += _swing_eq(-lost_mw)
+        _frequency_hz = max(59.5, _frequency_hz)
+
+    elif disturbance.type == "line_cascade":
+        # N-1 Cascade: auto-enable peak demand (if not already on) and the stabilizer,
+        # then trip Line 6 (Bus 4→5). Bus 4 is pre-loaded 2.5× at peak, so losing the
+        # 4→5 tie forces all Bus 4 supply through Line 3 (2→4) → congestion alarm.
+        # Stabilizer keeps frequency neutral during the operator's Gen 2 redispatch fix.
+        if not _PEAK_DEMAND:
+            set_peak_demand(True)
+        _GOVERNOR_ENABLED = True
+        _set_line_in_service(6, False)
 
     else:
         raise HTTPException(400, detail=f"Unknown disturbance type: {disturbance.type}")

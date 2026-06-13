@@ -1,20 +1,23 @@
-import { Paper, Typography, Divider } from "@mui/material";
+import { Paper, Typography, Divider, Box } from "@mui/material";
 
+// Row layout (top→bottom): [12,13,14] → [6,11,10,9,8] → [5,4,7] → [1,2,3]
+// Buses 6/13, 9/14, and 7/9/14 share x-columns so connecting lines are straight.
+// This arrangement eliminates line crossings with straight segments.
 const BUS_POSITIONS = {
-  1: { x: 100, y: 70 },
-  2: { x: 280, y: 70 },
-  3: { x: 455, y: 90 },
-  4: { x: 360, y: 190 },
-  5: { x: 170, y: 190 },
-  6: { x: 515, y: 215 },
-  7: { x: 375, y: 310 },
-  8: { x: 560, y: 335 },
-  9: { x: 345, y: 400 },
-  10: { x: 235, y: 465 },
-  11: { x: 400, y: 460 },
-  12: { x: 620, y: 350 },
-  13: { x: 580, y: 450 },
-  14: { x: 450, y: 515 },
+  1:  { x: 80,  y: 450 },
+  2:  { x: 240, y: 450 },
+  3:  { x: 590, y: 450 },
+  4:  { x: 430, y: 330 },
+  5:  { x: 240, y: 330 },
+  6:  { x: 190, y: 190 },
+  7:  { x: 530, y: 330 },
+  8:  { x: 640, y: 190 },
+  9:  { x: 530, y: 190 },
+  10: { x: 430, y: 190 },
+  11: { x: 310, y: 190 },
+  12: { x: 80,  y: 70  },
+  13: { x: 190, y: 70  },
+  14: { x: 530, y: 70  },
 };
 
 const GENERATOR_BUSES = new Set([1, 2, 3, 6, 8]);
@@ -43,7 +46,7 @@ const LINE_TOPOLOGY = [
 ];
 
 const ALARM_COLOR = { critical: "#f44336", warning: "#ff9800" };
-const LINE_NORMAL = "#3a3a3a";
+const LINE_NORMAL = "#686868";
 const LINE_TRIPPED = "#555";
 const BUS_GEN_NORMAL = "#4caf50";
 const BUS_MID_NORMAL = "#42a5f5";
@@ -53,13 +56,30 @@ function buildStatusMaps(alarms, metrics) {
   const lineStatus = {}; // id → alarm severity
   const busStatus = {}; // id → alarm severity
   const lineService = {}; // id → { in_service, loading_percent }
-  const genService = {}; // bus → in_service
+  const genService = {}; // bus → { in_service, output_mw }
+
+  const genIdToBus = {};
+  for (const gen of metrics?.generators ?? []) {
+    genIdToBus[gen.id] = gen.bus;
+  }
+
+  const SEVERITY_RANK = { warning: 1, critical: 2 };
 
   for (const alarm of alarms?.active ?? []) {
     const lm = alarm.id.match(/^loading_line_(\d+)$/);
     const bm = alarm.id.match(/^voltage_bus_(\d+)$/);
+    const gm = alarm.id.match(/^gen_overload_(\d+)$/);
     if (lm) lineStatus[parseInt(lm[1])] = alarm.severity;
     if (bm) busStatus[parseInt(bm[1])] = alarm.severity;
+    if (gm) {
+      const bus = genIdToBus[parseInt(gm[1])];
+      if (bus != null) {
+        const cur = busStatus[bus];
+        if (!cur || SEVERITY_RANK[alarm.severity] > SEVERITY_RANK[cur]) {
+          busStatus[bus] = alarm.severity;
+        }
+      }
+    }
   }
 
   for (const line of metrics?.lines ?? []) {
@@ -70,7 +90,7 @@ function buildStatusMaps(alarms, metrics) {
   }
 
   for (const gen of metrics?.generators ?? []) {
-    genService[gen.bus] = gen.in_service;
+    genService[gen.bus] = { in_service: gen.in_service, output_mw: gen.output_mw };
   }
 
   return { lineStatus, busStatus, lineService, genService };
@@ -91,39 +111,37 @@ export default function GridDiagram({ metrics, alarms }) {
   );
 
   return (
-    <Paper sx={{ p: 2, height: "100%" }}>
+    <Paper sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}>
       <Typography variant="h6" gutterBottom>
         IEEE 14-Bus System
       </Typography>
       <Divider sx={{ mb: 1, borderColor: "#2a2a2a" }} />
 
       {/* Legend */}
-      <svg width="100%" height="22" style={{ marginBottom: 6 }}>
-        {LEGEND.map(({ color, label, circle, dashed }, i) => (
-          <g key={label} transform={`translate(${i * 115 + 8}, 4)`}>
+      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap' }}>
+        {LEGEND.map(({ color, label, circle, dashed }) => (
+          <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             {circle ? (
-              <circle cx="7" cy="7" r="5" fill={color} />
+              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
             ) : (
-              <line
-                x1="0"
-                y1="7"
-                x2="14"
-                y2="7"
-                stroke={color}
-                strokeWidth="2"
-                strokeDasharray={dashed ? "4 3" : undefined}
-              />
+              <svg width="18" height="10" style={{ flexShrink: 0 }}>
+                <line
+                  x1="0" y1="5" x2="18" y2="5"
+                  stroke={color} strokeWidth="2.5"
+                  strokeDasharray={dashed ? "4 3" : undefined}
+                />
+              </svg>
             )}
-            <text x="19" y="11" fontSize="10" fill="#888">
-              {label}
-            </text>
-          </g>
+            <Typography variant="caption" sx={{ color: '#aaa', lineHeight: 1 }}>{label}</Typography>
+          </Box>
         ))}
-      </svg>
+      </Box>
 
+      <Box sx={{ flexGrow: 1, minHeight: 0, overflow: 'hidden' }}>
       <svg
         viewBox="0 0 700 540"
         width="100%"
+        height="100%"
         style={{ display: "block", background: "#111", borderRadius: 4 }}
       >
         {/* Lines */}
@@ -181,10 +199,13 @@ export default function GridDiagram({ metrics, alarms }) {
             <g key={`lid-${id}`}>
               <text
                 x={mx}
-                y={my - (subLabel ? 6 : 4)}
+                y={my - (subLabel ? 7 : 4)}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="11"
                 fill={idColor}
+                stroke="#111"
+                strokeWidth="2.5"
+                paintOrder="stroke"
                 fontWeight={sev && !tripped ? "bold" : "normal"}
               >
                 L{id}
@@ -192,12 +213,13 @@ export default function GridDiagram({ metrics, alarms }) {
               {subLabel && (
                 <text
                   x={mx}
-                  y={my + 5}
+                  y={my + 7}
                   textAnchor="middle"
-                  fontSize="8"
-                  fill="none"
-                  stroke="white"
-                  strokeWidth="0.25"
+                  fontSize="10"
+                  fill="#ddd"
+                  stroke="#111"
+                  strokeWidth="2.5"
+                  paintOrder="stroke"
                   fontWeight={sev && !tripped ? "bold" : "normal"}
                 >
                   {subLabel}
@@ -212,7 +234,8 @@ export default function GridDiagram({ metrics, alarms }) {
           const busId = parseInt(busIdStr);
           const isGen = GENERATOR_BUSES.has(busId);
           const sev = busStatus[busId];
-          const tripped = isGen && genService[busId] === false;
+          const tripped = isGen && genService[busId]?.in_service === false;
+          const outputMw = isGen ? (genService[busId]?.output_mw ?? null) : null;
 
           const color = tripped
             ? BUS_GEN_TRIPPED
@@ -222,35 +245,30 @@ export default function GridDiagram({ metrics, alarms }) {
                 ? BUS_GEN_NORMAL
                 : BUS_MID_NORMAL;
 
-          const r = isGen ? 11 : 8;
+          const r = isGen ? 22 : 13;
 
           return (
             <g key={busId}>
-              <circle
-                cx={x}
-                cy={y}
-                r={r}
-                fill={color}
-                opacity={tripped ? 0.7 : 1}
-              />
-              {/* Added white font fill to see percentage text easier*/}
+              <circle cx={x} cy={y} r={r} fill={color} opacity={tripped ? 0.7 : 1} />
               {isGen && (
-                <text
-                  x={x}
-                  y={y + 4}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fill="#fff"
-                  fontWeight="bold"
-                >
-                  {tripped ? "✕" : "G"}
-                </text>
+                tripped ? (
+                  <text x={x} y={y + 5} textAnchor="middle" fontSize="14" fill="#fff" fontWeight="bold">✕</text>
+                ) : (
+                  <>
+                    <text x={x} y={y - 3} textAnchor="middle" fontSize="11" fill="#fff" fontWeight="bold">
+                      {outputMw != null ? Math.round(outputMw) : "—"}
+                    </text>
+                    <text x={x} y={y + 10} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.75)">
+                      MW
+                    </text>
+                  </>
+                )
               )}
               <text
                 x={x}
                 y={y - r - 4}
                 textAnchor="middle"
-                fontSize="11"
+                fontSize="13"
                 fontWeight="bold"
                 fill={tripped ? "#888" : "#ccc"}
               >
@@ -260,6 +278,7 @@ export default function GridDiagram({ metrics, alarms }) {
           );
         })}
       </svg>
+      </Box>
     </Paper>
   );
 }

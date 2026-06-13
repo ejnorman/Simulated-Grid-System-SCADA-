@@ -26,17 +26,19 @@ BUS_CONFIG = [
 ]
 
 # 5 generators at buses 1, 2, 3, 6, 8 (IDs 0–4)
+# Gen 0 (slack) output is auto-balanced by pandapower; base_output_mw is a display hint only.
+# Gens 1–4 are sized to share load more evenly and give operators 30–40 MW of headroom each.
 GENERATOR_CONFIG = [
-    {"id": 0, "bus": 1, "base_output_mw": 232.4, "capacity_mw": 250.0},
-    {"id": 1, "bus": 2, "base_output_mw": 40.0,  "capacity_mw": 60.0},
-    {"id": 2, "bus": 3, "base_output_mw": 0.0,   "capacity_mw": 40.0},
-    {"id": 3, "bus": 6, "base_output_mw": 0.0,   "capacity_mw": 25.0},
-    {"id": 4, "bus": 8, "base_output_mw": 0.0,   "capacity_mw": 25.0},
+    {"id": 0, "bus": 1, "base_output_mw": 117.0, "capacity_mw": 350.0},
+    {"id": 1, "bus": 2, "base_output_mw": 50.0,  "capacity_mw": 90.0},
+    {"id": 2, "bus": 3, "base_output_mw": 40.0,  "capacity_mw": 90.0},
+    {"id": 3, "bus": 6, "base_output_mw": 30.0,  "capacity_mw": 60.0},
+    {"id": 4, "bus": 8, "base_output_mw": 30.0,  "capacity_mw": 70.0},
 ]
 
 # 20 transmission lines (IDs 0–19)
 LINE_CONFIG = [
-    {"id": 0,  "from_bus": 1,  "to_bus": 2,  "rated_mw": 175.0, "base_power_mw": 152.4, "base_loading": 87.1},
+    {"id": 0,  "from_bus": 1,  "to_bus": 2,  "rated_mw": 250.0, "base_power_mw": 152.4, "base_loading": 61.0},
     {"id": 1,  "from_bus": 1,  "to_bus": 5,  "rated_mw": 175.0, "base_power_mw": 75.5,  "base_loading": 43.1},
     {"id": 2,  "from_bus": 2,  "to_bus": 3,  "rated_mw": 130.0, "base_power_mw": 71.8,  "base_loading": 55.2},
     {"id": 3,  "from_bus": 2,  "to_bus": 4,  "rated_mw": 130.0, "base_power_mw": 56.3,  "base_loading": 43.3},

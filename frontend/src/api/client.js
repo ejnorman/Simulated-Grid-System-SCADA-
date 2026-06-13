@@ -28,4 +28,13 @@ export const fetchMetricHistory = (metric, start, end, interval = null) =>
 export const sendDisturbance = (disturbance) =>
   api.post('/disturbance', disturbance);
 
+export const sendReset = () =>
+  api.post('/reset');
+
+export const sendGovernorToggle = (enabled) =>
+  api.post('/governor', { enabled });
+
+export const sendPeakDemandToggle = (enabled) =>
+  api.post('/peak-demand', { enabled });
+
 export default api;

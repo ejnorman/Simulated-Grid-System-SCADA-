@@ -11,15 +11,17 @@ import {
   TableHead,
   TableRow,
   Button,
+  Tooltip,
 } from "@mui/material";
 import NotificationsIcon from "@mui/icons-material/Notifications";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import StatusChip from "./StatusChip";
 import { acknowledgeAlarm } from "../api/client";
 
 // Shown only on ACTIVE (not cleared) alarms to guide the operator toward a resolution.
 const ACTION_GUIDE = {
   frequency_hz:
-    "Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 1, 2, 3, or 4.",
+    "Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 2, 3, 6, or 8.",
   voltage_pu:
     "A bus voltage is out of range. In Breaker Control, close any lines shown as OPEN on the diagram to restore normal power paths.",
   line_loading_pct:
@@ -38,7 +40,7 @@ function StatusBadge({ alarm }) {
           bgcolor: "#37474f",
           color: "#90a4ae",
           fontWeight: 700,
-          fontSize: "0.65rem",
+          fontSize: "0.72rem",
         }}
       />
     );
@@ -52,7 +54,7 @@ function StatusBadge({ alarm }) {
           bgcolor: "#1565c0",
           color: "#90caf9",
           fontWeight: 700,
-          fontSize: "0.65rem",
+          fontSize: "0.72rem",
         }}
       />
     );
@@ -65,13 +67,13 @@ function StatusBadge({ alarm }) {
         bgcolor: "#7f1d1d",
         color: "#fca5a5",
         fontWeight: 700,
-        fontSize: "0.65rem",
+        fontSize: "0.72rem",
       }}
     />
   );
 }
 
-const CELL = { borderColor: "#2a2a2a", py: 0.75 };
+const CELL = { borderColor: "#2a2a2a", py: 1 };
 const MAX_RECENT = 5; // keep the cleared-alarm history short
 
 export default function AlarmsPanel({ alarms, onRefresh }) {
@@ -109,7 +111,7 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
           <Typography variant="h6">Active Alarms</Typography>
         </Box>
         <Chip
-          label={`${active.length} Active`}
+          label={active.length}
           size="small"
           sx={{
             bgcolor: active.length > 0 ? "#7f1d1d" : "#333",
@@ -133,7 +135,14 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
                   (h) => (
                     <TableCell
                       key={h}
-                      sx={{ ...CELL, color: "text.secondary", fontWeight: 600 }}
+                      sx={{
+                        ...CELL,
+                        color: "text.secondary",
+                        fontWeight: 600,
+                        ...(h === "Message" && { maxWidth: "220px" }),
+                        ...(h === "Status" && { width: "120px", whiteSpace: "nowrap" }),
+                        ...(h === "Action" && { width: "130px", whiteSpace: "nowrap" }),
+                      }}
                     >
                       {h}
                     </TableCell>
@@ -148,34 +157,29 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
                   sx={{ opacity: alarm.cleared_at ? 0.5 : 1 }}
                 >
                   <TableCell
-                    sx={{ ...CELL, whiteSpace: "nowrap", fontSize: "0.75rem" }}
+                    sx={{ ...CELL, whiteSpace: "nowrap", fontSize: "0.85rem" }}
                   >
                     {new Date(alarm.timestamp).toLocaleTimeString()}
                   </TableCell>
                   <TableCell sx={CELL}>
                     <StatusChip status={alarm.severity} />
                   </TableCell>
-                  <TableCell sx={{ ...CELL }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontSize: "0.8rem" }}
-                    ></Typography>
-                    {/* Only show action guide for active alarms, never for cleared rows */}
-                    {!alarm.cleared_at && ACTION_GUIDE[alarm.metric] && (
-                      <Typography
-                        variant="body2"
-                        sx={{ fontSize: "0.8rem" }}
-                        title={ACTION_GUIDE[alarm.metric]}
-                      >
-                        {/*Moved alarm.message to title attribute to reduce clutter*/}
+                  <TableCell sx={{ ...CELL, maxWidth: "220px" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontSize: "0.9rem" }}>
                         {alarm.message}
                       </Typography>
-                    )}
+                      {!alarm.cleared_at && ACTION_GUIDE[alarm.metric] && (
+                        <Tooltip title={ACTION_GUIDE[alarm.metric]} placement="top" arrow>
+                          <InfoOutlinedIcon sx={{ fontSize: "0.9rem", color: "#64b5f6", cursor: "help", flexShrink: 0 }} />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </TableCell>
-                  <TableCell sx={CELL}>
+                  <TableCell sx={{ ...CELL, width: "120px", whiteSpace: "nowrap" }}>
                     <StatusBadge alarm={alarm} />
                   </TableCell>
-                  <TableCell sx={CELL}>
+                  <TableCell sx={{ ...CELL, width: "130px", whiteSpace: "nowrap" }}>
                     {!alarm.acknowledged && !alarm.cleared_at && (
                       <Button
                         size="small"

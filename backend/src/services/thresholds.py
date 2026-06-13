@@ -144,7 +144,8 @@ def check_thresholds(data: dict):
             continue
         output   = gen.get("output_mw")
         capacity = gen.get("capacity_mw")
-        gen_id   = gen.get("id")
+        gen_id  = gen.get("id")
+        gen_bus = gen.get("bus", gen_id)
         if gen_id == _SLACK_GEN_ID:
             continue  # slack bus output is auto-managed — operator cannot adjust it
         if output is None or capacity is None or gen_id is None or capacity == 0:
@@ -158,13 +159,13 @@ def check_thresholds(data: dict):
         if utilization > gen_warning:
             create_alarm(
                 alarm_id, "critical",
-                f"Generator {gen_id} overloaded: {utilization:.0%}",
+                f"Generator {gen_bus} overloaded: {utilization:.0%}",
                 "generator_capacity_pct", utilization, gen_warning,
             )
         elif utilization > gen_normal:
             create_alarm(
                 alarm_id, "warning",
-                f"Generator {gen_id} near capacity: {utilization:.0%}",
+                f"Generator {gen_bus} near capacity: {utilization:.0%}",
                 "generator_capacity_pct", utilization, gen_normal,
             )
         elif utilization < gen_normal - _GEN_CLEAR_MARGIN:
