@@ -36,16 +36,11 @@ services:
     environment:
       - BACKEND_PORT=8000
       - SIMULATION_URL=http://simulation:8000
-      - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN:-my-super-secret-auth-token}
-      - INFLUXDB_ORG=${INFLUXDB_ORG:-capstone}
-      - INFLUXDB_BUCKET=${INFLUXDB_BUCKET:-telemetry}
       - LOG_LEVEL=INFO
     volumes:
       - ./backend:/app
     depends_on:
       - simulation
-      - influxdb
     networks:
       - ems-network
     healthcheck:
@@ -76,34 +71,7 @@ services:
     stdin_open: true
     tty: true
 
-  # InfluxDB - Time-Series Database
-  influxdb:
-    image: influxdb:2.7
-    container_name: ems-influxdb
-    ports:
-      - "8086:8086"
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUXDB_ADMIN_USER:-admin}
-      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUXDB_ADMIN_PASSWORD:-changeme123}
-      - DOCKER_INFLUXDB_INIT_ORG=${INFLUXDB_ORG:-capstone}
-      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUXDB_BUCKET:-telemetry}
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_TOKEN:-my-super-secret-auth-token}
-    volumes:
-      - influxdb-data:/var/lib/influxdb2
-      - ./database/influxdb:/docker-entrypoint-initdb.d
-    networks:
-      - ems-network
-    healthcheck:
-      test: ["CMD", "influx", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
 networks:
   ems-network:
     driver: bridge
 
-volumes:
-  influxdb-data:

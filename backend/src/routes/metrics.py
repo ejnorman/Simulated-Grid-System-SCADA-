@@ -1,8 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query
-from typing import Optional
+from fastapi import APIRouter, HTTPException
 
 from ..services import polling
-from ..db import influx
 
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
@@ -63,16 +61,3 @@ def get_metrics_current():
     }
 
 
-@router.get("/history")
-def get_metrics_history(
-    metric:   str           = Query(...,  description="e.g. 'frequency', 'voltage_bus_1', 'line_loading_0'"),
-    start:    str           = Query(...,  description="ISO 8601 start time"),
-    end:      str           = Query(...,  description="ISO 8601 end time"),
-    interval: Optional[str] = Query(None, description="Aggregation window, e.g. '1m', '5m'"),
-):
-    """
-    Query historical telemetry from InfluxDB.
-    Core query logic lives in db/influx.py:query_metric().
-    """
-    data_points = influx.query_metric(metric, start, end, interval)
-    return {"metric": metric, "start": start, "end": end, "data_points": data_points}
