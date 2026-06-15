@@ -53,10 +53,10 @@ const BUS_MID_NORMAL = "#42a5f5";
 const BUS_GEN_TRIPPED = "#616161";
 
 function buildStatusMaps(alarms, metrics) {
-  const lineStatus = {}; // id → alarm severity
-  const busStatus = {}; // id → alarm severity
-  const lineService = {}; // id → { in_service, loading_percent }
-  const genService = {}; // bus → { in_service, output_mw }
+  const lineStatus = {};
+  const busStatus = {};
+  const lineService = {};
+  const genService = {};
 
   const genIdToBus = {};
   for (const gen of metrics?.generators ?? []) {
@@ -111,7 +111,7 @@ export default function GridDiagram({ metrics, alarms }) {
   );
 
   return (
-    <Paper sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}>
+    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%", display: "flex", flexDirection: "column" }}>
       <Typography variant="h6" gutterBottom>
         IEEE 14-Bus System
       </Typography>
@@ -144,7 +144,6 @@ export default function GridDiagram({ metrics, alarms }) {
         height="100%"
         style={{ display: "block", background: "#111", borderRadius: 4 }}
       >
-        {/* Lines */}
         {LINE_TOPOLOGY.map(({ id, from, to }) => {
           const a = BUS_POSITIONS[from];
           const b = BUS_POSITIONS[to];
@@ -173,7 +172,6 @@ export default function GridDiagram({ metrics, alarms }) {
           );
         })}
 
-        {/* Line labels — show loading % if significant, or OPEN if tripped */}
         {LINE_TOPOLOGY.map(({ id, from, to }) => {
           const a = BUS_POSITIONS[from];
           const b = BUS_POSITIONS[to];
@@ -229,7 +227,6 @@ export default function GridDiagram({ metrics, alarms }) {
           );
         })}
 
-        {/* Bus circles */}
         {Object.entries(BUS_POSITIONS).map(([busIdStr, { x, y }]) => {
           const busId = parseInt(busIdStr);
           const isGen = GENERATOR_BUSES.has(busId);

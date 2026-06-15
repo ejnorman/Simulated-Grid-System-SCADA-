@@ -1,7 +1,3 @@
-"""
-Alert threshold definitions and evaluation logic.
-"""
-
 from .alarms import create_alarm, clear_alarm
 from .control import handle_critical_alarms
 
@@ -11,9 +7,8 @@ THRESHOLDS = {
         "advisory": (59.90, 60.10),
         "warning":  (59.80, 60.20),
     },
-    # case14 load buses naturally operate at 1.02–1.07 pu at base case,
-    # so the normal band must be wide enough not to alarm at steady state.
-    # These thresholds only fire during genuine contingency conditions.
+    # case14 load buses naturally operate at 1.02–1.07 pu at base case; band must be wide
+    # enough not to alarm at steady state — only fires during genuine contingency conditions.
     "voltage_pu": {
         "normal":  (0.92, 1.10),
         "warning": (0.88, 1.14),
@@ -47,12 +42,6 @@ _GEN_CLEAR_MARGIN   = 0.03   # fraction
 
 
 def check_thresholds(data: dict):
-    """
-    Evaluate telemetry against THRESHOLDS and update the alarm store.
-    Includes deadband hysteresis so alarms do not flicker near thresholds.
-    Excludes generator buses from voltage monitoring.
-    """
-
     freq = data.get("frequency_hz")
     if freq is not None:
         t = THRESHOLDS["frequency"]
@@ -74,9 +63,7 @@ def check_thresholds(data: dict):
                 freq_advisory_low if freq < 60.0 else freq_advisory_high,
             )
         elif freq_advisory_low + _FREQ_CLEAR_MARGIN <= freq <= freq_advisory_high - _FREQ_CLEAR_MARGIN:
-            # Only clear when freq is clearly inside the advisory band (59.93–60.07)
             clear_alarm("freq_out_of_range")
-        # else: in the 59.90–59.93 or 60.07–60.10 deadband — leave alarm state unchanged
 
     for bus in data.get("buses", []):
         voltage = bus.get("voltage_pu")
@@ -84,7 +71,7 @@ def check_thresholds(data: dict):
         if voltage is None or bus_id is None:
             continue
         if bus_id in _GENERATOR_BUSES:
-            continue  # AVR-controlled — operator cannot adjust
+            continue  # AVR-controlled — voltage is fixed, not operator-adjustable
 
         t = THRESHOLDS["voltage_pu"]
         voltage_normal_low, voltage_normal_high   = t["normal"]
@@ -107,7 +94,6 @@ def check_thresholds(data: dict):
             )
         elif voltage_normal_low + _VOLT_CLEAR_MARGIN <= voltage <= voltage_normal_high - _VOLT_CLEAR_MARGIN:
             clear_alarm(alarm_id)
-        # else: in deadband — leave unchanged
 
     for line in data.get("lines", []):
         line_id = line.get("id")
@@ -147,7 +133,7 @@ def check_thresholds(data: dict):
         gen_id  = gen.get("id")
         gen_bus = gen.get("bus", gen_id)
         if gen_id == _SLACK_GEN_ID:
-            continue  # slack bus output is auto-managed — operator cannot adjust it
+            continue  # slack bus output is auto-managed, not operator-adjustable
         if output is None or capacity is None or gen_id is None or capacity == 0:
             continue
 

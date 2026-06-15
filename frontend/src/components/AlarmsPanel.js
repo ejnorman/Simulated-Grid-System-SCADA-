@@ -18,7 +18,6 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import StatusChip from "./StatusChip";
 import { acknowledgeAlarm } from "../api/client";
 
-// Shown only on ACTIVE (not cleared) alarms to guide the operator toward a resolution.
 const ACTION_GUIDE = {
   frequency_hz:
     "Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 2, 3, 6, or 8.",
@@ -78,7 +77,6 @@ const MAX_RECENT = 5; // keep the cleared-alarm history short
 
 export default function AlarmsPanel({ alarms, onRefresh }) {
   const active = alarms?.active ?? [];
-  // Limit recent (cleared) alarms so old noise doesn't flood the panel
   const recent = (alarms?.recent ?? [])
     .sort((a, b) => new Date(b.cleared_at) - new Date(a.cleared_at))
     .slice(0, MAX_RECENT);
@@ -98,7 +96,7 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
   };
 
   return (
-    <Paper sx={{ p: 2, height: "100%" }}>
+    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%" }}>
       <Box
         sx={{
           display: "flex",

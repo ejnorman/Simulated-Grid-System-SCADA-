@@ -1,11 +1,3 @@
-"""
-Grid Model — IEEE 14-Bus Power Grid
-
-This module owns all grid state and the logic for reading and mutating it.
-
-The three functions below define the API contract. Keep their signatures unchanged.
-"""
-
 import logging
 import math
 import random
@@ -21,26 +13,9 @@ from .schemas import ControlCommand, Disturbance
 logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# MODULE-LEVEL STATE
-# =============================================================================
-# net:           pandapower network — created once at startup, mutated by controls/disturbances.
-# _frequency_hz: system frequency; updated via swing equation in apply_control/apply_disturbance.
-# _last_res:     cached power flow results from the last successful pp.runpp() call.
-#                Used as fallback when the current poll fails to converge.
-# grid_state:    tracks generator/line in_service flags and load demand values.
-# =============================================================================
-
 def create_network():
-    """
-    Build the IEEE 14-bus pandapower network from our constants.
-    Uses pn.case14() for correct line impedances, then overrides generator
-    outputs and load values to match GENERATOR_CONFIG and LOAD_CONFIG.
-    Called once at startup to initialize the module-level net object.
-    """
     net = pn.case14()
 
-    # Override non-slack generator outputs and capacities.
     # pandapower uses 0-indexed buses; our constants use 1-indexed.
     # Bus 1 (index 0) is the slack bus — modeled as ext_grid, not gen; skip it.
     # Bus 8 (index 7) is a synchronous condenser in case14() — no net.gen entry exists,
@@ -60,14 +35,12 @@ def create_network():
                           vm_pu=bc["base_voltage_pu"],
                           max_p_mw=gc["capacity_mw"], min_p_mw=0.0, in_service=True)
 
-    # Override load values to match LOAD_CONFIG.
     for lc in LOAD_CONFIG:
         bus_idx = lc["bus"] - 1
         mask = net.load["bus"] == bus_idx
         net.load.loc[mask, "p_mw"] = lc["base_demand_mw"]
         net.load.loc[mask, "q_mvar"] = lc["base_demand_mvar"]
 
-    # Set thermal ratings from LINE_CONFIG so loading_percent is meaningful.
     # case14() defaults leave max_i_ka as NaN on most lines, making loading_percent
     # always 0 regardless of actual power flow. We derive max_i_ka from rated_mw
     # using the bus voltage at the sending end: I = P / (sqrt(3) * V).
@@ -77,20 +50,19 @@ def create_network():
         if line_mask.any():
             vn_kv = float(net.bus.at[fb, "vn_kv"])
             net.line.loc[line_mask, "max_i_ka"] = lc["rated_mw"] / (math.sqrt(3) * vn_kv)
-        # Transformers: do NOT modify sn_mva — it sets the per-unit impedance base and
+        # Do NOT modify sn_mva on transformers — it sets the per-unit impedance base and
         # changing it while keeping vk_percent fixed alters the actual network impedance,
-        # causing Newton-Raphson to diverge. Transformer loading_percent comes from
-        # pandapower's own calculation using the original case14 ratings.
+        # causing Newton-Raphson to diverge.
 
     return net
 
 
 net = create_network()
 _frequency_hz = 60.0
-_GOVERNOR_ENABLED = False   # toggled via POST /governor; when on, frequency auto-recovers at 0.015/tick
+_GOVERNOR_ENABLED = False   # frequency auto-recovers at 0.015 Hz/tick when enabled
 _GOVERNOR_RATE_NOMINAL = 0.015
-_PEAK_DEMAND = False        # toggled via POST /peak-demand; scales loads 1.5× and pre-dispatches gens
-_last_res = None      # dict of copied result DataFrames from last successful runpp
+_PEAK_DEMAND = False
+_last_res = None  # cached result DataFrames from last successful runpp
 
 grid_state = {
     "generators": {
@@ -108,22 +80,13 @@ grid_state = {
 }
 
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
-
 def _jitter(value: float, pct: float = 0.004) -> float:
-    """Add ±0.4% random noise to simulate real sensor variance."""
     return round(value * (1 + random.uniform(-pct, pct)), 4)
 
 
 def _set_line_in_service(line_id: int, in_service: bool):
-    """
-    Set a line's in_service flag in net.line or net.trafo (whichever holds it),
-    matched by from/to bus pair. Also syncs grid_state for build_telemetry().
-    """
     lc = next(l for l in LINE_CONFIG if l["id"] == line_id)
-    fb, tb = lc["from_bus"] - 1, lc["to_bus"] - 1  # convert to 0-indexed
+    fb, tb = lc["from_bus"] - 1, lc["to_bus"] - 1
 
     line_mask = (net.line["from_bus"] == fb) & (net.line["to_bus"] == tb)
     if line_mask.any():
@@ -137,11 +100,8 @@ def _set_line_in_service(line_id: int, in_service: bool):
 
 def _run_power_flow() -> dict | None:
     """
-    Attempt Newton-Raphson power flow with fallback initialization.
     'auto' reuses the previous solution — fast but fails after topology changes.
     'flat' starts from 1.0 pu everywhere — robust after line trips.
-    Tolerance is relaxed to 1e-3 MVA (adequate for a monitoring dashboard).
-    Returns a dict of result DataFrames on success, None on total failure.
     """
     for init in ("auto", "dc", "flat"):
         try:
@@ -161,31 +121,11 @@ def _run_power_flow() -> dict | None:
 
 
 def _swing_eq(p_imbalance_mw: float) -> float:
-    """
-    Estimate frequency deviation from a generation/load imbalance.
-    Δf = P_imbalance / (2 × H × S_base), H=4s, S_base=100 MVA.
-    Positive imbalance (more generation) → frequency rises.
-    """
+    """Δf = P_imbalance / (2 × H × S_base), H=4s, S_base=100 MVA."""
     return p_imbalance_mw / 200.0
 
 
-# =============================================================================
-# PUBLIC API - THREE CORE FUNCTIONS
-# =============================================================================
-
 def build_telemetry() -> dict:
-    """
-    Return the current grid state as a telemetry snapshot.
-    Called by routes.get_telemetry() every time the backend polls (every 2 seconds).
-
-    Runs pp.runpp(net) and caches the results. On convergence failure, serves
-    the last cached results so the dashboard shows the last known-good state
-    rather than stale startup constants. Falls back to constants only on the
-    very first poll if that also fails.
-
-    IMPORTANT: Response shape must match API contract exactly.
-    Backend and frontend depend on these exact field names.
-    """
     global _frequency_hz, _last_res
     if _GOVERNOR_ENABLED:
         _frequency_hz += (60.0 - _frequency_hz) * _GOVERNOR_RATE_NOMINAL
@@ -196,9 +136,8 @@ def build_telemetry() -> dict:
     if result is not None:
         _last_res = result
 
-    freq = _jitter(_frequency_hz, pct=0.0002)  # ±0.012 Hz — frequency is grid-wide, not sensor-noisy
+    freq = _jitter(_frequency_hz, pct=0.0002)
 
-    # --- Buses ---
     buses = []
     for b in BUS_CONFIG:
         bus_idx = b["id"] - 1
@@ -211,8 +150,6 @@ def build_telemetry() -> dict:
             "type": b["type"]
         })
 
-    # --- Lines ---
-    # Build lookup: (from_bus_1indexed, to_bus_1indexed) → (power_mw, power_mvar, loading_percent)
     # pandapower case14() splits connections between net.line and net.trafo (transformers).
     _line_res = {}
     if _last_res:
@@ -245,8 +182,8 @@ def build_telemetry() -> dict:
         res = _line_res.get((l["from_bus"], l["to_bus"])) or _line_res.get((l["to_bus"], l["from_bus"]))
         if res:
             pwr = _jitter(res[0])
-            # case14() bus voltages are stored in a normalised form, making pandapower's
-            # own loading_percent meaningless. Compute it directly from MW / rated_mw.
+            # case14() bus voltages normalisation makes pandapower's loading_percent meaningless;
+            # compute it directly from MW / rated_mw instead.
             loading = abs(res[0]) / l["rated_mw"] * 100
             lines.append({
                 "id": l["id"], "from_bus": l["from_bus"], "to_bus": l["to_bus"],
@@ -262,9 +199,6 @@ def build_telemetry() -> dict:
                 "loading_percent": _jitter(l["base_loading"]), "in_service": True
             })
 
-    # --- Generators ---
-    # Non-slack generators: cached res_gen, keyed by bus (1-indexed).
-    # Slack bus (bus 1): cached res_ext_grid — absorbs whatever generation imbalance remains.
     _gen_res = {}
     if _last_res:
         for idx in net.gen.index:
@@ -302,7 +236,6 @@ def build_telemetry() -> dict:
                 "output_mvar": round(out * 0.072, 4), "capacity_mw": g["capacity_mw"], "in_service": True
             })
 
-    # --- Loads ---
     loads = []
     for ld in LOAD_CONFIG:
         load_state = grid_state["loads"][ld["id"]]
@@ -323,16 +256,6 @@ def build_telemetry() -> dict:
 
 
 def apply_control(cmd: ControlCommand) -> dict:
-    """
-    Apply a control command to the grid.
-    Called by routes.post_control() when frontend or backend sends a command.
-
-    Four command types:
-    - "adjust_generation": Change generator MW output
-    - "trip_breaker": Open a line (set in_service=False)
-    - "close_breaker": Close a line (set in_service=True)
-    - "restore_generator": Bring a tripped generator back online at 0 MW
-    """
     global _frequency_hz
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -353,14 +276,13 @@ def apply_control(cmd: ControlCommand) -> dict:
         new_output = max(0.0, min(capacity, previous + delta_mw))
         gen_state["output_mw"] = new_output
 
-        # Update net.gen for non-slack generators.
         # Slack bus (bus 1) is ext_grid — pandapower auto-balances it; skip.
         if gc["bus"] != 1:
             bus_idx = gc["bus"] - 1
             mask = net.gen["bus"] == bus_idx
             net.gen.loc[mask, "p_mw"] = new_output
 
-        actual_delta = new_output - previous  # clamped, so may differ from requested delta_mw
+        actual_delta = new_output - previous  # clamped, may differ from requested delta_mw
         _frequency_hz += _swing_eq(actual_delta)
         _frequency_hz = max(59.5, min(60.5, _frequency_hz))
 
@@ -450,11 +372,6 @@ def apply_control(cmd: ControlCommand) -> dict:
 
 
 def reset_grid() -> dict:
-    """
-    Restore the grid to its baseline state.
-    Rebuilds the pandapower network and resets all state variables.
-    Called by POST /reset for demo resets without a container restart.
-    """
     global net, _frequency_hz, _last_res, grid_state, _GOVERNOR_ENABLED, _PEAK_DEMAND
     net = create_network()
     _frequency_hz = 60.0
@@ -481,7 +398,6 @@ def reset_grid() -> dict:
 
 
 def set_governor(enabled: bool) -> dict:
-    """Enable or disable governor auto-recovery. Called by POST /governor."""
     global _GOVERNOR_ENABLED
     _GOVERNOR_ENABLED = enabled
     return {"governor_enabled": enabled}
@@ -489,17 +405,10 @@ def set_governor(enabled: bool) -> dict:
 
 _PEAK_GEN_SETPOINTS    = {1: 75.0, 2: 55.0, 3: 50.0, 4: 50.0}
 _PEAK_BUS4_MULTIPLIER  = 3.0  # Bus 4 is the congestion hot-spot — spike it hard
-_PEAK_OTHER_MULTIPLIER = 1.4  # modest background increase across the rest of the network
+_PEAK_OTHER_MULTIPLIER = 1.4
 
 
 def set_peak_demand(enabled: bool) -> dict:
-    """
-    Toggle peak demand mode. Called by POST /peak-demand.
-    ON: spikes Bus 4 load 2.5× and raises all other loads 1.4×. Pre-dispatches
-        Gen 1–4 at 75–83% capacity, leaving realistic spinning reserve.
-        Bus 4's heavy load means a Line 6 trip naturally congests Line 3 (2→4).
-    OFF: restores all loads and generator setpoints to base values.
-    """
     global _PEAK_DEMAND
     _PEAK_DEMAND = enabled
 
@@ -542,15 +451,6 @@ def set_peak_demand(enabled: bool) -> dict:
 
 
 def apply_disturbance(disturbance: Disturbance) -> dict:
-    """
-    Inject a test disturbance (fault) into the grid.
-    Called by routes.post_disturbance() for testing/demo purposes.
-
-    Three disturbance types:
-    - "generator_trip": Take a generator offline
-    - "load_spike": Suddenly increase load demand
-    - "line_outage": Take a line out of service
-    """
     global _frequency_hz, _GOVERNOR_ENABLED
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -580,7 +480,6 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
         if mask.any():
             net.gen.loc[mask, "in_service"] = False
 
-        # Swing equation: lost generation → frequency drop
         _frequency_hz += _swing_eq(-lost_mw)
         _frequency_hz = max(59.5, _frequency_hz)
 
@@ -601,14 +500,12 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
         load_state["demand_mw"] = new_mw
         load_state["demand_mvar"] = new_mvar
 
-        # Update net.load so the next power flow sees the new demand
         lc = next(l for l in LOAD_CONFIG if l["id"] == load_id)
         bus_idx = lc["bus"] - 1
         mask = net.load["bus"] == bus_idx
         net.load.loc[mask, "p_mw"] = new_mw
         net.load.loc[mask, "q_mvar"] = new_mvar
 
-        # Swing equation: extra load → frequency drop
         _frequency_hz += _swing_eq(-(new_mw - prev_mw))
         _frequency_hz = max(59.5, _frequency_hz)
 
@@ -623,7 +520,6 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
         _set_line_in_service(line_id, False)
 
     elif disturbance.type == "generation_crisis":
-        # Trip Gen 1 (Bus 2, 50 MW) and Gen 4 (Bus 8, 30 MW) simultaneously — 80 MW loss.
         for gen_id in [1, 4]:
             gc = next(g for g in GENERATOR_CONFIG if g["id"] == gen_id)
             gen_state = grid_state["generators"][gen_id]
@@ -640,10 +536,6 @@ def apply_disturbance(disturbance: Disturbance) -> dict:
         _frequency_hz = max(59.5, _frequency_hz)
 
     elif disturbance.type == "line_cascade":
-        # N-1 Cascade: auto-enable peak demand (if not already on) and the stabilizer,
-        # then trip Line 6 (Bus 4→5). Bus 4 is pre-loaded 2.5× at peak, so losing the
-        # 4→5 tie forces all Bus 4 supply through Line 3 (2→4) → congestion alarm.
-        # Stabilizer keeps frequency neutral during the operator's Gen 2 redispatch fix.
         if not _PEAK_DEMAND:
             set_peak_demand(True)
         _GOVERNOR_ENABLED = True

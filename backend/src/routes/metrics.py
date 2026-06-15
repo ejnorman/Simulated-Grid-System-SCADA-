@@ -7,10 +7,6 @@ router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 @router.get("/current")
 def get_metrics_current():
-    """
-    Return latest grid metrics derived from the most recently ingested telemetry.
-    Fast in-memory response — no InfluxDB query required.
-    """
     if polling.last_telemetry is None:
         raise HTTPException(503, detail="No telemetry available yet — simulation may not be reachable")
 

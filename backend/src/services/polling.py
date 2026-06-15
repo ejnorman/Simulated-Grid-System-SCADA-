@@ -1,7 +1,3 @@
-"""
-Background polling loop — fetches telemetry from simulation every UPDATE_INTERVAL seconds.
-"""
-
 import asyncio
 import httpx
 

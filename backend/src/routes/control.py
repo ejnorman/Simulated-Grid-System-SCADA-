@@ -9,10 +9,6 @@ router = APIRouter(tags=["control"])
 
 @router.post("/control")
 async def post_control(cmd: ControlCommand):
-    """
-    Validate, log, and proxy a control command to the simulation service.
-    Both manual (frontend) and automatic (control loop) commands go through here.
-    """
     print(f"[control] Forwarding: {cmd.command_type} → {cmd.target}")
     async with httpx.AsyncClient(timeout=5.0) as client:
         resp = await client.post(

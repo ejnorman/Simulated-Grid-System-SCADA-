@@ -1,9 +1,3 @@
-/**
- * API client — Axios instance and typed request functions.
- * All backend calls go through here so URL and request shape
- * changes only need to be made in one place.
- */
-
 import axios from 'axios';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8002';
@@ -21,9 +15,6 @@ export const acknowledgeAlarm = (alarmId, operatorName) =>
 
 export const sendControlCommand = (command) =>
   api.post('/control', command);
-
-export const fetchMetricHistory = (metric, start, end, interval = null) =>
-  api.get('/metrics/history', { params: { metric, start, end, interval } });
 
 export const sendDisturbance = (disturbance) =>
   api.post('/disturbance', disturbance);
