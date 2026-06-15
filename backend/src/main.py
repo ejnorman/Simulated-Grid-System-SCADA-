@@ -6,16 +6,13 @@ import asyncio
 
 from .routes import metrics, alarms, control, disturbance
 from .services import polling
-from .db import influx
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    influx.init()
     task = asyncio.create_task(polling.polling_loop())
     yield
     task.cancel()
-    influx.close()
 
 
 app = FastAPI(
@@ -44,7 +41,6 @@ def health():
         "status": "healthy",
         "service": "backend",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "database_connected": influx.client is not None,
     }
 
 
