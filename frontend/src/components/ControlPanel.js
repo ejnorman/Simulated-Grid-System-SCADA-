@@ -79,11 +79,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
   ];
 
   const SCENARIO_FEEDBACK = {
-    generator_trip:    'Gen 2 (Bus 2) tripped offline — generation lost. Frequency will drop. Use Generator Control (+MW on Gen 3, 6, or 8) to respond.',
-    load_spike:        'Load at Bus 2 doubled — demand increased. Frequency will drop. Use Generator Control (+MW on Gen 2, 3, 6, or 8) to respond.',
-    line_outage:       'Line 1 (Bus 1→5) tripped — Bus 1 must now reroute all power through Line 0 (1→2), which was already near capacity. Line 0 will overload and alarm critical. Use Breaker Control to trip Line 0 or close Line 1 to restore it.',
-    generation_crisis: 'Gen 2 (Bus 2) and Gen 8 (Bus 8) tripped simultaneously — 80 MW lost. Frequency is dropping fast. Ramp up Gen 3 and Gen 6, then restore and ramp the tripped generators back online.',
-    line_cascade:      'Line 6 (Bus 4→5) tripped — Line 3 (Bus 2→4) is congesting. Solution: ramp Gen 3 (Bus 3) — it supplies Bus 4 directly via Line 5 (3→4), bypassing Line 3. Each +10 MW on Gen 3 reduces Gen 1 output and Line 3 loading simultaneously.',
+    generator_trip:    'Gen 2 tripped — frequency will drop. Ramp up Gen 3, 6, or 8 to compensate.',
+    load_spike:        'Load at Bus 2 doubled — frequency will drop. Add MW on Gen 2, 3, 6, or 8 to compensate.',
+    line_outage:       'Line 1 (1→5) is out. Line 0 (1→2) is now overloaded and will alarm. Trip Line 0 or close Line 1 to restore it.',
+    generation_crisis: 'Gen 2 and Gen 8 both tripped — 80 MW lost. Ramp Gen 3 and Gen 6 first, then bring the tripped units back online.',
+    line_cascade:      'Line 6 (4→5) tripped. Line 3 (2→4) is congesting. Hint: think about which generator is closest to Bus 4.',
   };
 
   const sendScenario = async () => {

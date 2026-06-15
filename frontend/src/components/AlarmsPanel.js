@@ -20,13 +20,13 @@ import { acknowledgeAlarm } from "../api/client";
 
 const ACTION_GUIDE = {
   frequency_hz:
-    "Frequency is low — generation is not meeting demand. Use Generator Control: add +MW to Gen 2, 3, 6, or 8.",
+    "Not enough generation to meet demand. Add +MW to Gen 2, 3, 6, or 8.",
   voltage_pu:
-    "A bus voltage is out of range. In Breaker Control, close any lines shown as OPEN on the diagram to restore normal power paths.",
+    "Bus voltage out of range. Try closing lines shown as OPEN on the diagram.",
   line_loading_pct:
-    "A line is carrying too much power. In Breaker Control, trip this line to remove it from service. Power will reroute — watch for new overloads on other lines.",
+    "Line is overloaded. Trip it in Breaker Control — power will reroute. Watch for new overloads.",
   generator_capacity_pct:
-    "A generator is near or over its capacity limit. In Generator Control, send it a negative MW adjustment (e.g. −10), then add the same MW to another generator to keep the grid balanced.",
+    "Generator near its limit. Reduce output with -MW and shift that load to another unit.",
 };
 
 function StatusBadge({ alarm }) {
