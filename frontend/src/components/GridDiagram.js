@@ -111,14 +111,13 @@ export default function GridDiagram({ metrics, alarms }) {
   );
 
   return (
-    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%", display: "flex", flexDirection: "column" }}>
-      <Typography variant="h6" gutterBottom>
+    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%", display: "flex", flexDirection: "column", '@media (max-height: 950px)': { p: 1 } }}>
+      <Typography variant="h6" sx={{ mb: 1, '@media (max-height: 950px)': { fontSize: '0.75rem', mb: 0.25 } }}>
         IEEE 14-Bus System
       </Typography>
-      <Divider sx={{ mb: 1, borderColor: "#2a2a2a" }} />
+      <Divider sx={{ mb: 1, borderColor: "#2a2a2a", '@media (max-height: 950px)': { mb: 0.5 } }} />
 
-      {/* Legend */}
-      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap', '@media (max-height: 950px)': { display: 'none' } }}>
         {LEGEND.map(({ color, label, circle, dashed }) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             {circle ? (

@@ -106,7 +106,7 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <NotificationsIcon fontSize="small" sx={{ color: "#ffa726" }} />
-          <Typography variant="h6">Active Alarms</Typography>
+          <Typography variant="h6" sx={{ '@media (max-height: 950px)': { fontSize: '0.75rem' } }}>Active Alarms</Typography>
         </Box>
         <Chip
           label={active.length}

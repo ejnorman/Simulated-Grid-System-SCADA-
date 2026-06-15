@@ -28,7 +28,7 @@ export default function MetricCard({
       variant="outlined"
       sx={{
         p: 2,
-        '@media (max-height: 800px)': { padding: '8px 14px' },
+        '@media (max-height: 950px)': { padding: '8px 14px' },
         bgcolor: '#1a1a1a',
         border: '1px solid #333',
         borderLeft: `4px solid ${borderColor}`,
@@ -38,7 +38,7 @@ export default function MetricCard({
     >
       {icon && (
         <Box sx={{ position: 'absolute', top: 12, right: 12, opacity: 0.75,
-          '@media (max-height: 800px)': { top: 8, right: 8 }
+          '@media (max-height: 950px)': { top: 8, right: 8 }
         }}>
           {icon}
         </Box>
@@ -51,7 +51,7 @@ export default function MetricCard({
 
       <Typography variant="h4" fontWeight="bold"
         sx={{ display: 'flex', alignItems: 'baseline', color: 'white',
-          '@media (max-height: 800px)': { fontSize: '1.35rem' }
+          '@media (max-height: 950px)': { fontSize: '1.35rem' }
         }}>
         {AlarmIcon}
         {value ?? '—'}
@@ -62,7 +62,7 @@ export default function MetricCard({
 
       {subtitle && (
         <Typography variant="caption" color="text.secondary"
-          sx={{ mt: 0.5, display: 'block', '@media (max-height: 800px)': { display: 'none' } }}>
+          sx={{ mt: 0.5, display: 'block', '@media (max-height: 950px)': { display: 'none' } }}>
           {subtitle}
         </Typography>
       )}

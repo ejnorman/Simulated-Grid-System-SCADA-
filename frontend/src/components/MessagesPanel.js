@@ -14,7 +14,7 @@ export default function MessagesPanel({ messages = [], onDismiss }) {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <ChatBubbleOutlineIcon fontSize="small" sx={{ color: '#42a5f5' }} />
-          <Typography variant="h6">Messages</Typography>
+          <Typography variant="h6" sx={{ '@media (max-height: 950px)': { fontSize: '0.75rem' } }}>Messages</Typography>
         </Box>
         <Chip
           label={messages.length}
