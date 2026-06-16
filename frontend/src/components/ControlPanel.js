@@ -79,11 +79,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
   ];
 
   const SCENARIO_FEEDBACK = {
-    generator_trip:    'Gen 2 (Bus 2) tripped offline — generation lost. Frequency will drop. Use Generator Control (+MW on Gen 3, 6, or 8) to respond.',
-    load_spike:        'Load at Bus 2 doubled — demand increased. Frequency will drop. Use Generator Control (+MW on Gen 2, 3, 6, or 8) to respond.',
-    line_outage:       'Line 1 (Bus 1→5) tripped — Bus 1 must now reroute all power through Line 0 (1→2), which was already near capacity. Line 0 will overload and alarm critical. Use Breaker Control to trip Line 0 or close Line 1 to restore it.',
-    generation_crisis: 'Gen 2 (Bus 2) and Gen 8 (Bus 8) tripped simultaneously — 80 MW lost. Frequency is dropping fast. Ramp up Gen 3 and Gen 6, then restore and ramp the tripped generators back online.',
-    line_cascade:      'Line 6 (Bus 4→5) tripped — Line 3 (Bus 2→4) is congesting. Solution: ramp Gen 3 (Bus 3) — it supplies Bus 4 directly via Line 5 (3→4), bypassing Line 3. Each +10 MW on Gen 3 reduces Gen 1 output and Line 3 loading simultaneously.',
+    generator_trip:    'Gen 2 tripped — frequency will drop. Ramp up Gen 3, 6, or 8 to compensate.',
+    load_spike:        'Load at Bus 2 doubled — frequency will drop. Add MW on Gen 2, 3, 6, or 8 to compensate.',
+    line_outage:       'Line 1 (1→5) is out. Line 0 (1→2) is now overloaded and will alarm. Trip Line 0 or close Line 1 to restore it.',
+    generation_crisis: 'Gen 2 and Gen 8 both tripped — 80 MW lost. Ramp Gen 3 and Gen 6 first, then bring the tripped units back online.',
+    line_cascade:      'Line 6 (4→5) tripped. Line 3 (2→4) is congesting. Hint: think about which generator is closest to Bus 4.',
   };
 
   const sendScenario = async () => {
@@ -102,19 +102,18 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
   };
 
   return (
-    <Paper sx={{ p: 2 }}>
-      <Typography variant="h6" gutterBottom>Control Panel</Typography>
-      <Divider sx={{ mb: 2, borderColor: '#2a2a2a' }} />
+    <Paper sx={{ p: 2, '@media (max-height: 950px)': { p: 1 } }}>
+      <Typography variant="h6" sx={{ mb: 1, '@media (max-height: 950px)': { fontSize: '0.9rem', mb: 0.25 } }}>Control Panel</Typography>
+      <Divider sx={{ mb: 2, borderColor: '#2a2a2a', '@media (max-height: 950px)': { mb: 0.75 } }} />
 
-      <Grid container spacing={3}>
+      <Grid container spacing={3} sx={{ '@media (max-height: 950px)': { margin: '-4px !important', width: 'calc(100% + 8px) !important', '& > .MuiGrid-item': { padding: '4px !important' } } }}>
 
-        {/* Generator Control */}
         <Grid item xs={12} md={4}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, '@media (max-height: 950px)': { mb: 0.5 } }}>
             <BoltIcon fontSize="small" sx={{ color: '#4caf50' }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Generator Control</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, '@media (max-height: 950px)': { mb: 0.5, '& .MuiInputBase-root': { height: '32px', minHeight: '32px' }, '& .MuiSelect-select': { paddingTop: '4px', paddingBottom: '4px' } } }}>
             <InputLabel>Generator</InputLabel>
             <Select value={genId} label="Generator" onChange={(e) => setGenId(e.target.value)}>
               {GENERATORS.map(g => <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>)}
@@ -129,34 +128,29 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
           ) : (
             <>
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7f1d1d', '&:hover': { bgcolor: '#991b1b' } }}
+                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7f1d1d', '&:hover': { bgcolor: '#991b1b' }, '@media (max-height: 950px)': { py: '2px' } }}
                   onClick={() => sendGen(-10)}>-10</Button>
-                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7c2d12', '&:hover': { bgcolor: '#9a3412' } }}
+                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#7c2d12', '&:hover': { bgcolor: '#9a3412' }, '@media (max-height: 950px)': { py: '2px' } }}
                   onClick={() => sendGen(-5)}>-5</Button>
-                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#14532d', '&:hover': { bgcolor: '#166534' } }}
+                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#14532d', '&:hover': { bgcolor: '#166534' }, '@media (max-height: 950px)': { py: '2px' } }}
                   onClick={() => sendGen(5)}>+5</Button>
-                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#1e3a5f', '&:hover': { bgcolor: '#1e40af' } }}
+                <Button variant="contained" size="small" sx={{ flex: 1, bgcolor: '#1e3a5f', '&:hover': { bgcolor: '#1e40af' }, '@media (max-height: 950px)': { py: '2px' } }}
                   onClick={() => sendGen(10)}>+10</Button>
               </Box>
               <Typography variant="caption" color="text.secondary"
-                sx={{ display: 'block', mt: 0.5, textAlign: 'center' }}>
+                sx={{ display: 'block', mt: 0.5, textAlign: 'center', '@media (max-height: 950px)': { mt: 0.25 } }}>
                 MW adjustment
               </Typography>
-              <Button variant="outlined" size="small" fullWidth sx={{ mt: 1, borderColor: '#4caf50', color: '#4caf50' }}
-                onClick={restoreGen}>
-                Restore Generator
-              </Button>
             </>
           )}
         </Grid>
 
-        {/* Breaker Control */}
         <Grid item xs={12} md={4}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, '@media (max-height: 950px)': { mb: 0.5 } }}>
             <PowerOffIcon fontSize="small" sx={{ color: '#42a5f5' }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Breaker Control</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, '@media (max-height: 950px)': { mb: 0.5, '& .MuiInputBase-root': { height: '32px', minHeight: '32px' }, '& .MuiSelect-select': { paddingTop: '4px', paddingBottom: '4px' } } }}>
             <InputLabel>Line</InputLabel>
             <Select value={lineId} label="Line" onChange={(e) => setLineId(e.target.value)}>
               {Object.entries(LINE_LABELS).map(([id, buses]) => (
@@ -166,23 +160,24 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
           </FormControl>
           <Box sx={{ display: 'flex', gap: 1 }}>
             <Button variant="contained" color="error" fullWidth
+              sx={{ '@media (max-height: 950px)': { py: '2px' } }}
               onClick={() => sendBreaker('trip_breaker')}>
               Trip
             </Button>
             <Button variant="contained" color="success" fullWidth
+              sx={{ '@media (max-height: 950px)': { py: '2px' } }}
               onClick={() => sendBreaker('close_breaker')}>
               Close
             </Button>
           </Box>
         </Grid>
 
-        {/* Test Scenarios */}
         <Grid item xs={12} md={4}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, '@media (max-height: 950px)': { mb: 0.5 } }}>
             <WarningAmberIcon fontSize="small" sx={{ color: '#ffa726' }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Test Scenarios</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, '@media (max-height: 950px)': { mb: 0.5, '& .MuiInputBase-root': { height: '32px', minHeight: '32px' }, '& .MuiSelect-select': { paddingTop: '4px', paddingBottom: '4px' } } }}>
             <InputLabel>Scenario</InputLabel>
             <Select value={scenarioId} label="Scenario" onChange={(e) => setScenarioId(e.target.value)}>
               {SCENARIOS.map(s => (
@@ -192,7 +187,7 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
           </FormControl>
           <Button variant="outlined" fullWidth startIcon={<WarningAmberIcon />}
             onClick={sendScenario}
-            sx={{ borderColor: '#ffa726', color: '#ffa726', '&:hover': { borderColor: '#ffb74d', color: '#ffb74d' } }}>
+            sx={{ borderColor: '#ffa726', color: '#ffa726', '&:hover': { borderColor: '#ffb74d', color: '#ffb74d' }, '@media (max-height: 950px)': { py: '2px' } }}>
             Trigger Scenario
           </Button>
         </Grid>

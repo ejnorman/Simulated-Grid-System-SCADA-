@@ -10,11 +10,11 @@ const CATEGORY_STYLE = {
 
 export default function MessagesPanel({ messages = [], onDismiss }) {
   return (
-    <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <Paper sx={{ p: { xs: 1, md: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <ChatBubbleOutlineIcon fontSize="small" sx={{ color: '#42a5f5' }} />
-          <Typography variant="h6">Messages</Typography>
+          <Typography variant="h6" sx={{ '@media (max-height: 950px)': { fontSize: '0.75rem' } }}>Messages</Typography>
         </Box>
         <Chip
           label={messages.length}

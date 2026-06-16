@@ -128,8 +128,7 @@ export default function App() {
           <Alert severity="error" sx={{ borderRadius: 0, flexShrink: 0 }}>{error}</Alert>
         )}
 
-        {/* Main content — fills remaining height, no scroll on the page level */}
-        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', px: 4, py: 2, gap: 2 }}>
+        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', px: 4, py: 2, gap: 2, '@media (max-height: 950px)': { py: 1, gap: 1 } }}>
 
           <Box sx={{ flexShrink: 0 }}>
             <MetricsPanel metrics={metrics} prevMetrics={prevMetrics} />
@@ -139,7 +138,7 @@ export default function App() {
             <Box sx={{ flex: 7, minWidth: 0, minHeight: 0 }}>
               <GridDiagram metrics={metrics} alarms={alarms} />
             </Box>
-            <Box sx={{ flex: 5, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Box sx={{ flex: 5, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2, '@media (max-height: 950px)': { gap: 1 } }}>
               <Box sx={{ flex: 11, minHeight: 0, overflow: 'auto' }}>
                 <AlarmsPanel alarms={alarms} onRefresh={fetchData} />
               </Box>

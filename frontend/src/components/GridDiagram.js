@@ -53,10 +53,10 @@ const BUS_MID_NORMAL = "#42a5f5";
 const BUS_GEN_TRIPPED = "#616161";
 
 function buildStatusMaps(alarms, metrics) {
-  const lineStatus = {}; // id → alarm severity
-  const busStatus = {}; // id → alarm severity
-  const lineService = {}; // id → { in_service, loading_percent }
-  const genService = {}; // bus → { in_service, output_mw }
+  const lineStatus = {};
+  const busStatus = {};
+  const lineService = {};
+  const genService = {};
 
   const genIdToBus = {};
   for (const gen of metrics?.generators ?? []) {
@@ -111,14 +111,13 @@ export default function GridDiagram({ metrics, alarms }) {
   );
 
   return (
-    <Paper sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column" }}>
-      <Typography variant="h6" gutterBottom>
+    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%", display: "flex", flexDirection: "column", '@media (max-height: 950px)': { p: 1 } }}>
+      <Typography variant="h6" sx={{ mb: 1, '@media (max-height: 950px)': { fontSize: '0.75rem', mb: 0.25 } }}>
         IEEE 14-Bus System
       </Typography>
-      <Divider sx={{ mb: 1, borderColor: "#2a2a2a" }} />
+      <Divider sx={{ mb: 1, borderColor: "#2a2a2a", '@media (max-height: 950px)': { mb: 0.5 } }} />
 
-      {/* Legend */}
-      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap' }}>
+      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap', '@media (max-height: 950px)': { display: 'none' } }}>
         {LEGEND.map(({ color, label, circle, dashed }) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             {circle ? (
@@ -144,7 +143,6 @@ export default function GridDiagram({ metrics, alarms }) {
         height="100%"
         style={{ display: "block", background: "#111", borderRadius: 4 }}
       >
-        {/* Lines */}
         {LINE_TOPOLOGY.map(({ id, from, to }) => {
           const a = BUS_POSITIONS[from];
           const b = BUS_POSITIONS[to];
@@ -173,7 +171,6 @@ export default function GridDiagram({ metrics, alarms }) {
           );
         })}
 
-        {/* Line labels — show loading % if significant, or OPEN if tripped */}
         {LINE_TOPOLOGY.map(({ id, from, to }) => {
           const a = BUS_POSITIONS[from];
           const b = BUS_POSITIONS[to];
@@ -229,7 +226,6 @@ export default function GridDiagram({ metrics, alarms }) {
           );
         })}
 
-        {/* Bus circles */}
         {Object.entries(BUS_POSITIONS).map(([busIdStr, { x, y }]) => {
           const busId = parseInt(busIdStr);
           const isGen = GENERATOR_BUSES.has(busId);

@@ -1,12 +1,3 @@
-"""
-Static IEEE 14-bus system configuration.
-These values define the network topology and are used to initialize the grid model.
-
-TODO (simulation engineer): These constants can serve as the pandapower network
-definition. Use them in a create_network() function to build the pp.create_empty_network()
-object with the correct buses, lines, generators, and loads.
-"""
-
 # 14 buses — types: slack (swing/reference), pv (voltage-controlled), pq (load bus)
 BUS_CONFIG = [
     {"id": 1,  "type": "slack", "nominal_kv": 138.0, "base_voltage_pu": 1.060},
@@ -25,9 +16,7 @@ BUS_CONFIG = [
     {"id": 14, "type": "pq",    "nominal_kv": 138.0, "base_voltage_pu": 1.036},
 ]
 
-# 5 generators at buses 1, 2, 3, 6, 8 (IDs 0–4)
 # Gen 0 (slack) output is auto-balanced by pandapower; base_output_mw is a display hint only.
-# Gens 1–4 are sized to share load more evenly and give operators 30–40 MW of headroom each.
 GENERATOR_CONFIG = [
     {"id": 0, "bus": 1, "base_output_mw": 117.0, "capacity_mw": 350.0},
     {"id": 1, "bus": 2, "base_output_mw": 50.0,  "capacity_mw": 90.0},
@@ -36,7 +25,6 @@ GENERATOR_CONFIG = [
     {"id": 4, "bus": 8, "base_output_mw": 30.0,  "capacity_mw": 70.0},
 ]
 
-# 20 transmission lines (IDs 0–19)
 LINE_CONFIG = [
     {"id": 0,  "from_bus": 1,  "to_bus": 2,  "rated_mw": 250.0, "base_power_mw": 152.4, "base_loading": 61.0},
     {"id": 1,  "from_bus": 1,  "to_bus": 5,  "rated_mw": 175.0, "base_power_mw": 75.5,  "base_loading": 43.1},
@@ -60,7 +48,6 @@ LINE_CONFIG = [
     {"id": 19, "from_bus": 13, "to_bus": 14, "rated_mw": 65.0,  "base_power_mw": 5.6,   "base_loading": 8.6},
 ]
 
-# 11 load points
 LOAD_CONFIG = [
     {"id": 0,  "bus": 2,  "base_demand_mw": 21.7, "base_demand_mvar": 12.7},
     {"id": 1,  "bus": 3,  "base_demand_mw": 94.2, "base_demand_mvar": 19.0},

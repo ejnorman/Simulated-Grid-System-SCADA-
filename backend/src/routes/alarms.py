@@ -13,7 +13,6 @@ def get_alarms(
     acknowledged: Optional[bool] = Query(None, description="Filter by acknowledgment status"),
     limit:        int            = Query(50,   description="Max results per category"),
 ):
-    """Return active (uncleared) and recently cleared alarms."""
     all_alarms = list(alarms.values())
     active = [a for a in all_alarms if a.get("cleared_at") is None]
     recent = [a for a in all_alarms if a.get("cleared_at") is not None]
