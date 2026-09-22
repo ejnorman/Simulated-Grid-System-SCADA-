@@ -26,20 +26,28 @@ const LINE_LABELS = {
 const SECTION_LABEL = {
   textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.75rem',
   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-  [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
+  [bpMd]: { fontSize: '10px' }, [bpSm]: { fontSize: '9px' }, [bpXs]: { fontSize: '8px' },
 };
 const SECTION_ICON_SX = {
-  [bpMd]: { fontSize: '18px' }, [bpSm]: { fontSize: '16px' }, [bpXs]: { fontSize: '14px' },
+  [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
 };
-// No forced height here (unlike the original's fixed 32px hack): the Select's
-// height is derived from its font-size, so it shrinks tier by tier on its own.
+// No forced height (unlike the original's fixed 32px hack): the Select's
+// height comes from font-size + its own internal padding, so both need to
+// shrink tier by tier — MUI's size="small" padding is a fixed px value, not
+// relative to font-size, so it wouldn't shrink on its own and would leave a
+// height floor even at the smallest tier.
 const SELECT_SX = {
   '& .MuiInputBase-root, & .MuiInputLabel-root, & .MuiMenuItem-root': {
-    [bpMd]: { fontSize: '13px' }, [bpSm]: { fontSize: '12px' }, [bpXs]: { fontSize: '11px' },
+    [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+  },
+  '& .MuiSelect-select': {
+    [bpMd]: { paddingTop: '6px', paddingBottom: '6px' },
+    [bpSm]: { paddingTop: '4px', paddingBottom: '4px' },
+    [bpXs]: { paddingTop: '2px', paddingBottom: '2px' },
   },
 };
 const BUTTON_SX = {
-  [bpMd]: { fontSize: '12px', py: '4px' }, [bpSm]: { fontSize: '11px', py: '2px' }, [bpXs]: { fontSize: '10px', py: '2px' },
+  [bpMd]: { fontSize: '11px', py: '3px' }, [bpSm]: { fontSize: '10px', py: '1px' }, [bpXs]: { fontSize: '9px', py: '1px' },
 };
 
 export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onMessage }) {
@@ -120,11 +128,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
   };
 
   return (
-    <Paper sx={{ p: 2, [bpMd]: { p: 1.5 }, [bpSm]: { p: 1 }, [bpXs]: { p: 0.75 } }}>
+    <Paper sx={{ p: 2, [bpMd]: { p: 1 }, [bpSm]: { p: 0.625 }, [bpXs]: { p: 0.5 } }}>
       <Typography variant="h6" sx={{
-        mb: 1, [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
+        mb: 1, [bpMd]: { fontSize: '14px' }, [bpSm]: { fontSize: '12px' }, [bpXs]: { fontSize: '10px' },
       }}>Control Panel</Typography>
-      <Divider sx={{ mb: 2, borderColor: '#2a2a2a', [bpMd]: { mb: 1.5 }, [bpSm]: { mb: 1 }, [bpXs]: { mb: 0.75 } }} />
+      <Divider sx={{ mb: 2, borderColor: '#2a2a2a', [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.5 }, [bpXs]: { mb: 0.25 } }} />
 
       {/* flexWrap stays 'nowrap' (the default): wrapping to a second row would
           roughly double this panel's height and eat directly into the grid
@@ -132,11 +140,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
       <Box sx={{ display: 'flex', gap: 3 }}>
 
         <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 } }}>
             <BoltIcon fontSize="small" sx={{ color: '#4caf50', ...SECTION_ICON_SX }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Generator Control</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 }, ...SELECT_SX }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 }, ...SELECT_SX }}>
             <InputLabel>Generator</InputLabel>
             <Select value={genId} label="Generator" onChange={(e) => setGenId(e.target.value)}>
               {GENERATORS.map(g => <MenuItem key={g.value} value={g.value}>{g.label}</MenuItem>)}
@@ -146,7 +154,7 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
           {genId === 0 ? (
             <Alert severity="info" sx={{
               py: 0.5, fontSize: '0.75rem',
-              [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
+              [bpMd]: { fontSize: '10px', py: 0.25 }, [bpSm]: { fontSize: '9px', py: 0 }, [bpXs]: { fontSize: '8px', py: 0 },
             }}>
               Gen 1 is the <strong>slack bus</strong> — its output is set automatically
               by the simulator to balance generation and load. Use Gen 2, 3, 6, or 8 for manual control.
@@ -166,7 +174,7 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
               <Typography variant="caption" color="text.secondary"
                 sx={{
                   display: 'block', mt: 0.5, textAlign: 'center',
-                  [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
+                  [bpMd]: { fontSize: '10px', mt: 0.25 }, [bpSm]: { fontSize: '9px', mt: 0 }, [bpXs]: { fontSize: '8px', mt: 0 },
                 }}>
                 MW adjustment
               </Typography>
@@ -175,11 +183,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
         </Box>
 
         <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 } }}>
             <PowerOffIcon fontSize="small" sx={{ color: '#42a5f5', ...SECTION_ICON_SX }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Breaker Control</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 }, ...SELECT_SX }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 }, ...SELECT_SX }}>
             <InputLabel>Line</InputLabel>
             <Select value={lineId} label="Line" onChange={(e) => setLineId(e.target.value)}>
               {Object.entries(LINE_LABELS).map(([id, buses]) => (
@@ -200,11 +208,11 @@ export default function ControlPanel({ onGovernorChange, onPeakDemandChange, onM
         </Box>
 
         <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 } }}>
             <WarningAmberIcon fontSize="small" sx={{ color: '#ffa726', ...SECTION_ICON_SX }} />
             <Typography variant="subtitle2" sx={SECTION_LABEL}>Test Scenarios</Typography>
           </Box>
-          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 1 }, [bpSm]: { mb: 0.75 }, [bpXs]: { mb: 0.5 }, ...SELECT_SX }}>
+          <FormControl size="small" fullWidth sx={{ mb: 1.5, [bpMd]: { mb: 0.5 }, [bpSm]: { mb: 0.25 }, [bpXs]: { mb: 0.125 }, ...SELECT_SX }}>
             <InputLabel>Scenario</InputLabel>
             <Select value={scenarioId} label="Scenario" onChange={(e) => setScenarioId(e.target.value)}>
               {SCENARIOS.map(s => (

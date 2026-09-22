@@ -69,15 +69,15 @@ export default function App() {
         <AppBar position="static" elevation={0}
           sx={{ bgcolor: '#111', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
           <Toolbar sx={{
-            [bpMd]: { minHeight: '56px' }, [bpSm]: { minHeight: '48px' }, [bpXs]: { minHeight: '40px' },
+            [bpMd]: { minHeight: '44px' }, [bpSm]: { minHeight: '36px' }, [bpXs]: { minHeight: '30px' },
           }}>
             <ElectricBoltIcon sx={{
               mr: 1, color: '#FFD700',
-              [bpMd]: { fontSize: '20px' }, [bpSm]: { fontSize: '18px' }, [bpXs]: { fontSize: '16px' },
+              [bpMd]: { fontSize: '18px' }, [bpSm]: { fontSize: '15px' }, [bpXs]: { fontSize: '13px' },
             }} />
             <Typography variant="h6" sx={{
               flexGrow: 1, fontWeight: 700, letterSpacing: 1,
-              [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
+              [bpMd]: { fontSize: '14px' }, [bpSm]: { fontSize: '12px' }, [bpXs]: { fontSize: '10px' },
             }}>
               GridMaster
             </Typography>
@@ -93,7 +93,7 @@ export default function App() {
                 borderColor: peakDemand ? '#ff9800' : '#444',
                 color:       peakDemand ? '#ff9800' : '#9e9e9e',
                 '&:hover': { borderColor: peakDemand ? '#ffb74d' : '#888', color: peakDemand ? '#ffb74d' : '#ccc' },
-                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+                [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
               }}
             >
               Peak Demand {peakDemand ? 'ON' : 'OFF'}
@@ -110,7 +110,7 @@ export default function App() {
                 borderColor: governorEnabled ? '#4caf50' : '#444',
                 color:       governorEnabled ? '#4caf50' : '#9e9e9e',
                 '&:hover': { borderColor: governorEnabled ? '#66bb6a' : '#888', color: governorEnabled ? '#66bb6a' : '#ccc' },
-                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+                [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
               }}
             >
               Stabilizer {governorEnabled ? 'ON' : 'OFF'}
@@ -122,7 +122,7 @@ export default function App() {
               onClick={() => { sendReset().then(fetchData); setGovernorEnabled(false); setPeakDemand(false); setMessages([]); }}
               sx={{
                 mr: 2, borderColor: '#444', color: '#9e9e9e', '&:hover': { borderColor: '#888', color: '#ccc' },
-                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+                [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
               }}
             >
               Reset Grid
@@ -131,7 +131,7 @@ export default function App() {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography variant="body2" sx={{
                   opacity: 0.6, letterSpacing: 1,
-                  [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+                  [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
                 }}>
                   SYSTEM STATUS:
                 </Typography>

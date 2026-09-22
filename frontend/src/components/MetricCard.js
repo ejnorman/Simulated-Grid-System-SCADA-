@@ -31,7 +31,7 @@ export default function MetricCard({
       variant="outlined"
       sx={{
         padding: '16px',
-        [bpMd]: { padding: '10px 14px' }, [bpSm]: { padding: '8px 12px' }, [bpXs]: { padding: '6px 10px' },
+        [bpMd]: { padding: '8px 12px' }, [bpSm]: { padding: '5px 8px' }, [bpXs]: { padding: '3px 6px' },
         bgcolor: '#1a1a1a',
         border: '1px solid #333',
         borderLeft: `4px solid ${borderColor}`,
@@ -42,9 +42,9 @@ export default function MetricCard({
       {icon && (
         <Box sx={{
           position: 'absolute', top: 12, right: 12, opacity: 0.75,
-          [bpMd]: { top: 10, right: 10, fontSize: '20px' },
-          [bpSm]: { top: 8, right: 8, fontSize: '18px' },
-          [bpXs]: { top: 6, right: 6, fontSize: '16px' },
+          [bpMd]: { top: 8, right: 8, fontSize: '16px' },
+          [bpSm]: { top: 5, right: 5, fontSize: '14px' },
+          [bpXs]: { top: 3, right: 3, fontSize: '12px' },
         }}>
           {icon}
         </Box>
@@ -57,7 +57,7 @@ export default function MetricCard({
         sx={{
           letterSpacing: 1, textTransform: 'uppercase', mb: 0.5,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
+          [bpMd]: { fontSize: '10px', mb: 0.25 }, [bpSm]: { fontSize: '9px', mb: 0 }, [bpXs]: { fontSize: '8px', mb: 0 },
         }}>
         {label}
       </Typography>
@@ -66,13 +66,13 @@ export default function MetricCard({
         sx={{
           display: 'flex', alignItems: 'baseline', color: 'white',
           whiteSpace: 'nowrap', overflow: 'hidden',
-          [bpMd]: { fontSize: '26px' }, [bpSm]: { fontSize: '20px' }, [bpXs]: { fontSize: '16px' },
+          [bpMd]: { fontSize: '20px' }, [bpSm]: { fontSize: '15px' }, [bpXs]: { fontSize: '12px' },
         }}>
         {AlarmIcon}
         {value ?? '—'}
         <Typography component="span" variant="body1" color="text.secondary" sx={{
           ml: 0.75,
-          [bpMd]: { fontSize: '13px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '9px' },
+          [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '9px' }, [bpXs]: { fontSize: '8px' },
         }}>
           {unit}
         </Typography>
@@ -83,7 +83,7 @@ export default function MetricCard({
           sx={{
             mt: 0.5, display: 'block',
             whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-            [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { display: 'none' },
+            [bpMd]: { fontSize: '10px', mt: 0.25 }, [bpSm]: { fontSize: '9px', mt: 0 }, [bpXs]: { display: 'none' },
           }}>
           {subtitle}
         </Typography>
