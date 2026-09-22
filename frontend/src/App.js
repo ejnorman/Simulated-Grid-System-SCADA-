@@ -3,6 +3,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, AppBar, Toolbar, Typography, Box, Alert, Button } from '@mui/material';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import { bpMd, bpSm, bpXs } from './breakpoints';
 
 import StatusChip from './components/StatusChip';
 import MetricsPanel from './components/MetricsPanel';
@@ -67,9 +68,17 @@ export default function App() {
 
         <AppBar position="static" elevation={0}
           sx={{ bgcolor: '#111', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
-          <Toolbar>
-            <ElectricBoltIcon sx={{ mr: 1, color: '#FFD700' }} />
-            <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700, letterSpacing: 1 }}>
+          <Toolbar sx={{
+            [bpMd]: { minHeight: '56px' }, [bpSm]: { minHeight: '48px' }, [bpXs]: { minHeight: '40px' },
+          }}>
+            <ElectricBoltIcon sx={{
+              mr: 1, color: '#FFD700',
+              [bpMd]: { fontSize: '20px' }, [bpSm]: { fontSize: '18px' }, [bpXs]: { fontSize: '16px' },
+            }} />
+            <Typography variant="h6" sx={{
+              flexGrow: 1, fontWeight: 700, letterSpacing: 1,
+              [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
+            }}>
               GridMaster
             </Typography>
             <Button
@@ -84,6 +93,7 @@ export default function App() {
                 borderColor: peakDemand ? '#ff9800' : '#444',
                 color:       peakDemand ? '#ff9800' : '#9e9e9e',
                 '&:hover': { borderColor: peakDemand ? '#ffb74d' : '#888', color: peakDemand ? '#ffb74d' : '#ccc' },
+                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
               }}
             >
               Peak Demand {peakDemand ? 'ON' : 'OFF'}
@@ -100,6 +110,7 @@ export default function App() {
                 borderColor: governorEnabled ? '#4caf50' : '#444',
                 color:       governorEnabled ? '#4caf50' : '#9e9e9e',
                 '&:hover': { borderColor: governorEnabled ? '#66bb6a' : '#888', color: governorEnabled ? '#66bb6a' : '#ccc' },
+                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
               }}
             >
               Stabilizer {governorEnabled ? 'ON' : 'OFF'}
@@ -109,13 +120,19 @@ export default function App() {
               variant="outlined"
               startIcon={<RestartAltIcon />}
               onClick={() => { sendReset().then(fetchData); setGovernorEnabled(false); setPeakDemand(false); setMessages([]); }}
-              sx={{ mr: 2, borderColor: '#444', color: '#9e9e9e', '&:hover': { borderColor: '#888', color: '#ccc' } }}
+              sx={{
+                mr: 2, borderColor: '#444', color: '#9e9e9e', '&:hover': { borderColor: '#888', color: '#ccc' },
+                [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+              }}
             >
               Reset Grid
             </Button>
             {metrics && (
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="body2" sx={{ opacity: 0.6, letterSpacing: 1 }}>
+                <Typography variant="body2" sx={{
+                  opacity: 0.6, letterSpacing: 1,
+                  [bpMd]: { fontSize: '12px' }, [bpSm]: { fontSize: '11px' }, [bpXs]: { fontSize: '10px' },
+                }}>
                   SYSTEM STATUS:
                 </Typography>
                 <StatusChip status={metrics.system_status} />
@@ -128,17 +145,28 @@ export default function App() {
           <Alert severity="error" sx={{ borderRadius: 0, flexShrink: 0 }}>{error}</Alert>
         )}
 
-        <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', px: 4, py: 2, gap: 2, '@media (max-height: 950px)': { py: 1, gap: 1 } }}>
+        {/* overflowY 'auto' (not 'hidden'): a safety net for a screen too short even
+            for the xs tier below — scrolls instead of silently clipping content. */}
+        <Box sx={{
+          flexGrow: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', overflowX: 'hidden', px: 4, py: 2, gap: 2,
+          [bpMd]: { py: 1.5, gap: 1.5 }, [bpSm]: { py: 1, gap: 1 }, [bpXs]: { py: 0.5, gap: 0.5 },
+        }}>
 
           <Box sx={{ flexShrink: 0 }}>
             <MetricsPanel metrics={metrics} prevMetrics={prevMetrics} />
           </Box>
 
-          <Box sx={{ flexGrow: 1, display: 'flex', gap: 2, minHeight: 0 }}>
+          {/* This row (grid + alarms/messages) is the "content" — like a video player,
+              it keeps a large, protected share of the screen (minHeight) even as the
+              header/metrics/control panel above and below shrink harder tier by tier. */}
+          <Box sx={{ flexGrow: 1, display: 'flex', gap: 2, minHeight: '50vh' }}>
             <Box sx={{ flex: 7, minWidth: 0, minHeight: 0 }}>
               <GridDiagram metrics={metrics} alarms={alarms} />
             </Box>
-            <Box sx={{ flex: 5, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2, '@media (max-height: 950px)': { gap: 1 } }}>
+            <Box sx={{
+              flex: 5, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 2,
+              [bpMd]: { gap: 1.5 }, [bpSm]: { gap: 1 }, [bpXs]: { gap: 0.5 },
+            }}>
               <Box sx={{ flex: 11, minHeight: 0, overflow: 'auto' }}>
                 <AlarmsPanel alarms={alarms} onRefresh={fetchData} />
               </Box>

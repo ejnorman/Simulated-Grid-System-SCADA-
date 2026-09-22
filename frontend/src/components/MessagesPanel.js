@@ -1,6 +1,7 @@
 import { Paper, Typography, Divider, Box, Chip, IconButton } from '@mui/material';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
+import { bpMd, bpSm, bpXs } from '../breakpoints';
 
 const CATEGORY_STYLE = {
   Scenario: { bg: '#4a2c00', color: '#ffa726' },
@@ -12,9 +13,15 @@ export default function MessagesPanel({ messages = [], onDismiss }) {
   return (
     <Paper sx={{ p: { xs: 1, md: 2 }, height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Header is "chrome" and shrinks hard; the message list below keeps
+            its size — same protected scale as the grid beside it. */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ChatBubbleOutlineIcon fontSize="small" sx={{ color: '#42a5f5' }} />
-          <Typography variant="h6" sx={{ '@media (max-height: 950px)': { fontSize: '0.75rem' } }}>Messages</Typography>
+          <ChatBubbleOutlineIcon fontSize="small" sx={{
+            color: '#42a5f5', [bpMd]: { fontSize: '18px' }, [bpSm]: { fontSize: '16px' }, [bpXs]: { fontSize: '14px' },
+          }} />
+          <Typography variant="h6" sx={{
+            [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
+          }}>Messages</Typography>
         </Box>
         <Chip
           label={messages.length}

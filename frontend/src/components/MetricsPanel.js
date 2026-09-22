@@ -1,4 +1,4 @@
-import { Grid } from '@mui/material';
+import { Box } from '@mui/material';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BoltIcon from '@mui/icons-material/Bolt';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -29,8 +29,13 @@ export default function MetricsPanel({ metrics, prevMetrics }) {
   const freqIconColor = freqAlarm === 'critical' ? '#f44336' : freqAlarm === 'warning' ? '#ff9800' : '#4caf50';
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={12} sm={6} md={3}>
+    // flexWrap stays 'nowrap' (the default) on purpose: MUI Grid's xs/sm/md
+    // stacking looked like the right tool here too, but wrapping to a 2nd row
+    // roughly doubles this panel's height and eats directly into the grid
+    // row's space below it (flexShrink:0 in App.js means it never gives that
+    // height back). Cards just get narrower instead, down to 0.
+    <Box sx={{ display: 'flex', gap: 2 }}>
+      <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
         <MetricCard
           label="Frequency"
           value={metrics.frequency_hz?.toFixed(3)}
@@ -40,8 +45,8 @@ export default function MetricsPanel({ metrics, prevMetrics }) {
           icon={<ShowChartIcon sx={{ color: freqIconColor }} />}
           subtitle={freqDelta(metrics.frequency_hz, prevMetrics?.frequency_hz)}
         />
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      </Box>
+      <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
         <MetricCard
           label="Total Generation"
           value={metrics.total_generation_mw?.toFixed(1)}
@@ -49,8 +54,8 @@ export default function MetricsPanel({ metrics, prevMetrics }) {
           icon={<BoltIcon sx={{ color: '#42a5f5' }} />}
           subtitle={mwDelta(metrics.total_generation_mw, prevMetrics?.total_generation_mw)}
         />
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      </Box>
+      <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
         <MetricCard
           label="Total Load"
           value={metrics.total_load_mw?.toFixed(1)}
@@ -58,8 +63,8 @@ export default function MetricsPanel({ metrics, prevMetrics }) {
           icon={<TrendingDownIcon sx={{ color: '#ffa726' }} />}
           subtitle={mwDelta(metrics.total_load_mw, prevMetrics?.total_load_mw)}
         />
-      </Grid>
-      <Grid item xs={12} sm={6} md={3}>
+      </Box>
+      <Box sx={{ flex: '1 1 0', minWidth: 0 }}>
         <MetricCard
           label="Losses"
           value={metrics.total_losses_mw?.toFixed(1)}
@@ -67,7 +72,7 @@ export default function MetricsPanel({ metrics, prevMetrics }) {
           icon={<WarningAmberIcon sx={{ color: '#ef5350' }} />}
           subtitle={mwDelta(metrics.total_losses_mw, prevMetrics?.total_losses_mw)}
         />
-      </Grid>
-    </Grid>
+      </Box>
+    </Box>
   );
 }
