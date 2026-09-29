@@ -1,4 +1,5 @@
 import { Paper, Typography, Divider, Box } from "@mui/material";
+import { bpMd, bpSm, bpXs } from "../breakpoints";
 
 // Row layout (top→bottom): [12,13,14] → [6,11,10,9,8] → [5,4,7] → [1,2,3]
 // Buses 6/13, 9/14, and 7/9/14 share x-columns so connecting lines are straight.
@@ -111,19 +112,29 @@ export default function GridDiagram({ metrics, alarms }) {
   );
 
   return (
-    <Paper sx={{ p: { xs: 1, md: 2 }, height: "100%", display: "flex", flexDirection: "column", '@media (max-height: 950px)': { p: 1 } }}>
-      <Typography variant="h6" sx={{ mb: 1, '@media (max-height: 950px)': { fontSize: '0.75rem', mb: 0.25 } }}>
+    // The title + legend here are "chrome" for this component and shrink hard
+    // tier by tier so the actual diagram (the SVG below, left untouched) keeps
+    // as much of this Paper's box as possible.
+    <Paper sx={{ p: 2, height: "100%", display: "flex", flexDirection: "column", [bpMd]: { p: 1.5 }, [bpSm]: { p: 1 }, [bpXs]: { p: 0.75 } }}>
+      <Typography variant="h6" sx={{
+        mb: 1, [bpMd]: { fontSize: '16px', mb: 0.5 }, [bpSm]: { fontSize: '13px', mb: 0.25 }, [bpXs]: { fontSize: '11px', mb: 0.25 },
+      }}>
         IEEE 14-Bus System
       </Typography>
-      <Divider sx={{ mb: 1, borderColor: "#2a2a2a", '@media (max-height: 950px)': { mb: 0.5 } }} />
+      <Divider sx={{ mb: 1, borderColor: "#2a2a2a", [bpMd]: { mb: 0.75 }, [bpSm]: { mb: 0.5 }, [bpXs]: { mb: 0.25 } }} />
 
-      <Box sx={{ display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap', '@media (max-height: 950px)': { display: 'none' } }}>
+      {/* Stays visible at every tier (just smaller) rather than the original's
+          display:'none' below one threshold, which lost the legend entirely. */}
+      <Box sx={{
+        display: 'flex', gap: 5, mb: 1, flexShrink: 0, flexWrap: 'wrap',
+        [bpMd]: { gap: 3, mb: 0.75 }, [bpSm]: { gap: 2, mb: 0.5 }, [bpXs]: { gap: 1, mb: 0.25 },
+      }}>
         {LEGEND.map(({ color, label, circle, dashed }) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
             {circle ? (
-              <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+              <Box sx={{ width: '0.75em', height: '0.75em', borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
             ) : (
-              <svg width="18" height="10" style={{ flexShrink: 0 }}>
+              <svg width="1.1em" height="0.65em" viewBox="0 0 18 10" style={{ flexShrink: 0 }}>
                 <line
                   x1="0" y1="5" x2="18" y2="5"
                   stroke={color} strokeWidth="2.5"
@@ -131,7 +142,10 @@ export default function GridDiagram({ metrics, alarms }) {
                 />
               </svg>
             )}
-            <Typography variant="caption" sx={{ color: '#aaa', lineHeight: 1 }}>{label}</Typography>
+            <Typography variant="caption" sx={{
+              color: '#aaa', lineHeight: 1,
+              [bpMd]: { fontSize: '11px' }, [bpSm]: { fontSize: '10px' }, [bpXs]: { fontSize: '9px' },
+            }}>{label}</Typography>
           </Box>
         ))}
       </Box>

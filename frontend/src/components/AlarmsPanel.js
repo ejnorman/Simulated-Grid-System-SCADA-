@@ -17,6 +17,7 @@ import NotificationsIcon from "@mui/icons-material/Notifications";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import StatusChip from "./StatusChip";
 import { acknowledgeAlarm } from "../api/client";
+import { bpMd, bpSm, bpXs } from "../breakpoints";
 
 const ACTION_GUIDE = {
   frequency_hz:
@@ -104,9 +105,15 @@ export default function AlarmsPanel({ alarms, onRefresh }) {
           alignItems: "center",
         }}
       >
+        {/* Header is "chrome" for this panel and shrinks hard; the alarm list
+            below keeps its size — same protected scale as the grid beside it. */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <NotificationsIcon fontSize="small" sx={{ color: "#ffa726" }} />
-          <Typography variant="h6" sx={{ '@media (max-height: 950px)': { fontSize: '0.75rem' } }}>Active Alarms</Typography>
+          <NotificationsIcon fontSize="small" sx={{
+            color: "#ffa726", [bpMd]: { fontSize: '18px' }, [bpSm]: { fontSize: '16px' }, [bpXs]: { fontSize: '14px' },
+          }} />
+          <Typography variant="h6" sx={{
+            [bpMd]: { fontSize: '16px' }, [bpSm]: { fontSize: '14px' }, [bpXs]: { fontSize: '12px' },
+          }}>Active Alarms</Typography>
         </Box>
         <Chip
           label={active.length}
